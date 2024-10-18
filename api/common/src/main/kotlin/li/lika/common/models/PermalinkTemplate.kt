@@ -1,0 +1,15 @@
+package li.lika.common.models
+
+enum class PermalinkTemplate {
+    THE_LIVE_QUIZ_NORMAL,
+    THE_LIVE_QUIZ_MYSTERY,
+    THE_LIVE_QUIZ_MYSTERY_WHITEMARK,
+    FROG_QUOTE,
+    FROG_BACKSTAGE,
+    FROG_BACKSTAGE_WHITEMARK,
+    FROG_NORMAL,
+    FROG_NORMAL_WHITEMARK,
+    CUSTOM,
+
+
+}

@@ -1,0 +1,12 @@
+out
+build
+target
+.gradle
+.idea
+*.iml
+.DS_Store
+application-*
+!application-default.yml
+!application-default.yaml
+build-info.properties
+gradle.properties

@@ -1,0 +1,8 @@
+rootProject.name = 'lika'
+
+include 'api'
+include 'client-http'
+include 'common'
+include 'db-memory'
+include 'db-mongo'
+include 'security'

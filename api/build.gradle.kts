@@ -1,0 +1,90 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
+plugins {
+    id("java")
+    id("org.springframework.boot") version "${Versions.springBoot}"
+    id("io.spring.dependency-management") version "${PluginVersions.springDependencyMgmt}"
+    kotlin("jvm") version "${PluginVersions.kotlinJvm}"
+    kotlin("plugin.spring") version "${PluginVersions.kotlinSpring}"
+}
+
+tasks.getByName<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
+    enabled = false
+}
+
+tasks.getByName<Jar>("jar") {
+    enabled = false
+}
+
+allprojects {
+    group = "li.lika"
+    version = "1.0.0-SNAPSHOT"
+    apply(plugin = "java")
+    apply(plugin = "kotlin")
+    apply(plugin = "io.spring.dependency-management")
+
+    repositories {
+        mavenCentral()
+        mavenLocal()
+        maven {
+            url = uri(System.getenv("NEXUS_REPOSITORY_SNAPSHOTS_URL") ?: System.getProperty("nexus.repository.snapshots.url"))
+            credentials {
+                username = System.getenv("NEXUS_USER") ?: System.getProperty("nexus.user")
+                password = System.getenv("NEXUS_PASSWORD") ?: System.getProperty("nexus.password")
+            }
+        }
+        maven {
+            url = uri(System.getenv("NEXUS_REPOSITORY_RELEASES_URL") ?: System.getProperty("nexus.repository.releases.url"))
+            credentials {
+                username = System.getenv("NEXUS_USER") ?: System.getProperty("nexus.user")
+                password = System.getenv("NEXUS_PASSWORD") ?: System.getProperty("nexus.password")
+            }
+        }
+    }
+
+    dependencyManagement {
+        imports {
+            mavenBom(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES)
+        }
+    }
+
+    dependencies {
+        implementation("org.jetbrains.kotlin:kotlin-reflect:${Versions.kotlinReflect}")
+        implementation("org.jetbrains.kotlin:kotlin-stdlib:${Versions.kotlinStdLib}")
+    }
+
+    tasks.withType<KotlinCompile> {
+        kotlinOptions {
+            freeCompilerArgs = listOf("-Xjsr305=strict")
+            jvmTarget = "21"
+        }
+    }
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+    }
+}
+
+
+
+
+subprojects {
+
+    sourceSets {
+        main {
+            java.srcDir("src/main/kotlin")
+            resources.srcDir("src/main/resources")
+        }
+
+        test {
+            java.srcDir("src/test/kotlin")
+            resources.srcDir("src/test/resources")
+        }
+    }
+
+    tasks.withType<Test> {
+        useJUnitPlatform()
+    }
+}

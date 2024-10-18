@@ -1,0 +1,59 @@
+lika:
+  domains:
+    - host: "localhost:8080"
+      id: "1a92d0b6-a77c-4546-8bd5-1f99712cddfe"
+      apiBaseUrl: "http://localhost:8080"
+      landingBaseUrl: "http://localhost:4200"
+    - host: "127.0.0.1:8080"
+      apiBaseUrl: "https://localhost:8080"
+      landingBaseUrl: "http://localhost:4201"
+  defaultLinks:
+    - slug: test
+      targetUrl: https://google.com
+      domainIndex: 0
+    - slug: test1
+      targetUrl: https://google.com
+      domainIndex: 0
+    - slug: test2
+      targetUrl: https://google.com
+      domainIndex: 0
+    - slug: test3
+      targetUrl: https://google.com
+      domainIndex: 0
+    - slug: test4
+      targetUrl: https://google.com
+      domainIndex: 0
+    - slug: test5
+      targetUrl: https://google.com
+      domainIndex: 0
+    - slug: test6
+      targetUrl: https://google.com
+      domainIndex: 0
+    - slug: test7
+      targetUrl: https://google.com
+      domainIndex: 0
+    - slug: test8
+      targetUrl: https://google.com
+      domainIndex: 0
+    - slug: test9
+      targetUrl: https://google.com
+      domainIndex: 0
+    - slug: test10
+      targetUrl: https://google.com
+      domainIndex: 0
+    - slug: other
+      targetUrl: https://bing.com
+      domainIndex: 1
+cors:
+  enabled: true
+  allowedOrigins: "*"
+server:
+  port: 8080
+security:
+  defaultGlobalName: global
+  defaultGlobalAccessToken: lika-client-secret
+  defaultGlobalPublicReadAccessToken: lika-client-read
+logging:
+  level:
+    li.lika: debug
+    org.springframework: info

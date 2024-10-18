@@ -1,0 +1,4 @@
+systemProp.nexus.user=myuser
+systemProp.nexus.password=mypassword
+systemProp.nexus.repository.releases.url=https://nexus.it.frogconnexion.io/repository/maven-releases
+systemProp.nexus.repository.snapshots.url=https://nexus.it.frogconnexion.io/repository/maven-snapshots
