@@ -1,5 +1,6 @@
 out
 build
+data
 target
 .gradle
 .idea

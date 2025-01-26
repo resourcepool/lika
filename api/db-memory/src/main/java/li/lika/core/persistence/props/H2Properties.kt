@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 /**
  * @author Loïc Ortola on 02/08/2018
  */
-@ConfigurationProperties(prefix = "db.mongodb")
+@ConfigurationProperties(prefix = "db.memory")
 class H2Properties {
 
     data class Host(var host: String? = null, var port: Int? = null)

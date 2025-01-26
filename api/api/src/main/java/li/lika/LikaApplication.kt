@@ -21,6 +21,7 @@ import org.springframework.cache.caffeine.CaffeineCacheManager
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Import
+import org.springframework.context.annotation.PropertySource
 import org.springframework.scheduling.annotation.EnableScheduling
 import java.lang.management.GarbageCollectorMXBean
 import java.lang.management.ManagementFactory
@@ -32,6 +33,9 @@ import java.util.concurrent.TimeUnit
 @EnableScheduling
 @EnableCaching
 @ComponentScan(basePackages = ["li.lika.core.persistence", "li.lika.core.services", "li.lika.webapp.controllers"])
+@PropertySource(value = ["classpath:application-db-sqlite.properties"], ignoreResourceNotFound = true)
+@PropertySource(value = ["classpath:application-db-memory.properties"], ignoreResourceNotFound = true)
+@PropertySource(value = ["classpath:application-db-mongo.properties"], ignoreResourceNotFound = true)
 @EnableConfigurationProperties(
     ServerProperties::class,
     CorsProperties::class,

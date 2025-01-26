@@ -44,9 +44,10 @@ dependencies {
 
     if (project.hasProperty("dbMongo")) {
         runtimeOnly(project(":db-mongo"))
-    } else if (project.hasProperty("dbPostgre")) {
-        // runtimeOnly(project(":db-postgre"))
+    } else if (project.hasProperty("dbSqlite")) {
+        runtimeOnly(project(":db-sqlite"))
     } else {
+        //runtimeOnly(project(":db-sqlite"))
         runtimeOnly(project(":db-memory"))
     }
     implementation("com.fasterxml.jackson.core:jackson-annotations:${Versions.jackson}")
