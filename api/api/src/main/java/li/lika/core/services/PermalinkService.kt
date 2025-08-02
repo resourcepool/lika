@@ -1,12 +1,7 @@
 package li.lika.core.services
 
-import jakarta.annotation.PostConstruct
 import li.lika.common.exceptions.*
-import li.lika.common.models.Domain
-import li.lika.common.models.Permalink
-import li.lika.common.models.PermalinkType
-import li.lika.common.models.ProtectedLinks
-import li.lika.common.models.PermalinkCreator
+import li.lika.common.models.*
 import li.lika.common.models.dtos.PageRequest
 import li.lika.common.models.dtos.PageResponse
 import li.lika.common.persistence.DomainDao
@@ -84,14 +79,16 @@ class PermalinkService(
             l.targetUrl,
             l.type
         )
-        if (l.expiryDate != null) {
-            pl.expiryDate = LocalDate.parse(l.expiryDate)
+        if (l.type == PermalinkType.WITH_LANDING && l.options.landing?.templateId != null) {
+            pl.options.landing = LandingOptions(l.options.landing!!.templateId)
         }
-        if (l.activationDateTime != null) {
-            pl.activationDateTime = ZonedDateTime.parse(l.activationDateTime)
+        if (l.options.expiry?.expiryDate != null) {
+            pl.options.expiry = ExpiryOptions(LocalDate.parse(l.options.expiry!!.expiryDate!!))
         }
-        pl.template = l.template
-        pl.customTemplate = l.customTemplate
+        if (l.options.activation?.activationInstant != null) {
+            pl.options.activation = ActivationOptions(ZonedDateTime.parse(l.options.activation!!.activationInstant!!),
+                l.options.activation!!.targetUrlBeforeActivation)
+        }
         return permalinkDao.save(pl)
     }
 

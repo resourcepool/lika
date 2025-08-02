@@ -1,16 +1,15 @@
 package li.lika.webapp.controllers
 
-import li.lika.common.models.Domain
 import li.lika.common.exceptions.ForbiddenException
+import li.lika.common.models.Domain
+import li.lika.common.models.DomainCreator
 import li.lika.core.services.DomainService
 import li.lika.security.models.AccessTokenAuthentication
 import li.lika.security.models.security.Roles
 import li.lika.security.models.security.utils.Claims
 import li.lika.security.models.security.utils.RoleUtils
 import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 import java.security.Principal
 
 @RequestMapping("/api/domains")

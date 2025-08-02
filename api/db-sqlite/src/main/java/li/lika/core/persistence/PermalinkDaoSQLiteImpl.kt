@@ -56,7 +56,7 @@ class PermalinkDaoSQLiteImpl(private val repository: PermalinkRepository) : Perm
     }
 
     override fun removeAllExpired(): List<Permalink> {
-        return repository.deleteAllByExpiryDateIsBefore(LocalDate.now().minusDays(1))
+        return repository.deleteAllByOptionExpiryDateIsBefore(LocalDate.now().minusDays(1))
             .map { it.toDomain() }
     }
 

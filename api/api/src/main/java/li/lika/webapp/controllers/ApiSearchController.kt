@@ -1,8 +1,8 @@
 package li.lika.webapp.controllers
 
-import li.lika.common.models.Permalink
 import li.lika.common.exceptions.ForbiddenException
 import li.lika.common.exceptions.InvalidDomainException
+import li.lika.common.models.Permalink
 import li.lika.core.services.DomainService
 import li.lika.core.services.PermalinkService
 import li.lika.security.models.AccessTokenAuthentication

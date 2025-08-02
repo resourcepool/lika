@@ -1,0 +1,67 @@
+<h2 mat-dialog-title>Create New Domain</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="domainForm" class="domain-form">
+    
+    <!-- Domain Host -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Domain Host</mat-label>
+      <input matInput formControlName="host" placeholder="example.com">
+      @if (domainForm.get('host')?.hasError('required')) {
+        <mat-error>Domain host is required</mat-error>
+      }
+      @if (domainForm.get('host')?.hasError('pattern')) {
+        <mat-error>Please enter a valid domain (e.g., example.com)</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Target Owner Dropdown -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Assign to Account (optional)</mat-label>
+      <mat-select formControlName="targetOwnerId">
+        <mat-option value="">System Domain (No specific owner)</mat-option>
+        @for (account of accounts; track account.id) {
+          <mat-option [value]="account.id">
+            {{ getAccountDisplayName(account) }}
+          </mat-option>
+        }
+      </mat-select>
+      <mat-hint>Leave empty for system-wide domain</mat-hint>
+    </mat-form-field>
+
+    <!-- API Base URL -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>API Base URL</mat-label>
+      <input matInput formControlName="apiBaseUrl" placeholder="https://api.example.com" type="url">
+      @if (domainForm.get('apiBaseUrl')?.hasError('required')) {
+        <mat-error>API Base URL is required</mat-error>
+      }
+      @if (domainForm.get('apiBaseUrl')?.hasError('pattern')) {
+        <mat-error>Please enter a valid URL (http:// or https://)</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Landing Base URL -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Landing Base URL (optional)</mat-label>
+      <input matInput formControlName="landingBaseUrl" placeholder="https://landing.example.com" type="url">
+      @if (domainForm.get('landingBaseUrl')?.hasError('pattern')) {
+        <mat-error>Please enter a valid URL (http:// or https://)</mat-error>
+      }
+      <mat-hint>URL for landing pages (optional)</mat-hint>
+    </mat-form-field>
+
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-raised-button color="primary"
+          (click)="onSubmit()"
+          [disabled]="domainForm.invalid || loading">
+    @if (loading) {
+      <mat-spinner diameter="16"></mat-spinner>
+    }
+    Create Domain
+  </button>
+</mat-dialog-actions>

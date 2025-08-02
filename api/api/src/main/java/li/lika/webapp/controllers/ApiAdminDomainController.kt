@@ -23,8 +23,11 @@ class ApiAdminDomainController(private val domainService: DomainService) {
     }
 
     @PostMapping
-    fun create(@RequestBody req: DomainCreator, @RequestParam(required = false) ownerId: String? = null, @AuthenticationPrincipal p: Principal): Domain {
+    fun create(@RequestBody req: DomainCreator, @RequestParam(required = false) ownerId: String? = null, @RequestParam(required = false) global: Boolean? = null, @AuthenticationPrincipal p: Principal): Domain {
         val owner = p as AccessTokenAuthentication
+        if (global == true) {
+            return domainService.saveGlobal(req, ownerId ?: owner.getId())
+        }
         return domainService.save(req, ownerId ?: owner.getId())
     }
 

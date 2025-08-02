@@ -6,7 +6,7 @@ import com.mongodb.MongoCredential
 import com.mongodb.ServerAddress
 import com.mongodb.client.MongoClient
 import com.mongodb.client.MongoClients
-import li.lika.core.props.*
+import li.lika.core.props.MongoProperties
 import mu.KotlinLogging
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean

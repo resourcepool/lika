@@ -1,6 +1,5 @@
 package li.lika.core.services
 
-import jakarta.annotation.PostConstruct
 import li.lika.common.exceptions.AccountAlreadyExistsException
 import li.lika.common.models.Account
 import li.lika.common.models.AccountCreator

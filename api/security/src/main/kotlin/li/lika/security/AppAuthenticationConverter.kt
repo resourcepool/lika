@@ -1,5 +1,6 @@
 package li.lika.security
 
+import jakarta.servlet.http.HttpServletRequest
 import li.lika.security.core.Headers.AUTH_HEADER_NAME
 import li.lika.security.core.Params.ACCESS_TOKEN
 import li.lika.security.models.DummyAuthentication
@@ -7,7 +8,6 @@ import li.lika.security.models.security.utils.AuthenticationConverterUtils
 import org.slf4j.LoggerFactory
 import org.springframework.security.core.Authentication
 import org.springframework.security.web.authentication.AuthenticationConverter
-import jakarta.servlet.http.HttpServletRequest
 
 /**
  * Encode token and decode header from frontend

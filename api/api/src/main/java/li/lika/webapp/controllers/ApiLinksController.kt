@@ -1,10 +1,10 @@
 package li.lika.webapp.controllers
 
-import li.lika.common.models.Permalink
-import li.lika.common.models.PermalinkCreator
 import li.lika.common.exceptions.ForbiddenException
 import li.lika.common.exceptions.InvalidDomainException
 import li.lika.common.exceptions.PermalinkNotFoundException
+import li.lika.common.models.Permalink
+import li.lika.common.models.PermalinkCreator
 import li.lika.common.models.dtos.*
 import li.lika.core.services.DomainService
 import li.lika.core.services.PermalinkService

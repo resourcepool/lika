@@ -26,20 +26,7 @@ allprojects {
     repositories {
         mavenCentral()
         mavenLocal()
-        maven {
-            url = uri(System.getenv("NEXUS_REPOSITORY_SNAPSHOTS_URL") ?: System.getProperty("nexus.repository.snapshots.url"))
-            credentials {
-                username = System.getenv("NEXUS_USER") ?: System.getProperty("nexus.user")
-                password = System.getenv("NEXUS_PASSWORD") ?: System.getProperty("nexus.password")
-            }
-        }
-        maven {
-            url = uri(System.getenv("NEXUS_REPOSITORY_RELEASES_URL") ?: System.getProperty("nexus.repository.releases.url"))
-            credentials {
-                username = System.getenv("NEXUS_USER") ?: System.getProperty("nexus.user")
-                password = System.getenv("NEXUS_PASSWORD") ?: System.getProperty("nexus.password")
-            }
-        }
+
     }
 
     dependencyManagement {

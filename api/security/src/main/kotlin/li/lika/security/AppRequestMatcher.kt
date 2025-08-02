@@ -1,8 +1,8 @@
 package li.lika.security
 
+import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpMethod
 import org.springframework.security.web.util.matcher.RequestMatcher
-import jakarta.servlet.http.HttpServletRequest
 
 class AppRequestMatcher : RequestMatcher {
     override fun matches(request: HttpServletRequest): Boolean {

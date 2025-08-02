@@ -1,0 +1,225 @@
+<div class="admin-layout">
+  <!-- Header -->
+  <header class="admin-header">
+    <mat-toolbar color="primary" class="main-toolbar">
+      <div class="toolbar-content">
+        <div class="brand">
+          <mat-icon class="brand-icon">link</mat-icon>
+          <span class="brand-text">Account Management</span>
+        </div>
+        
+        <div class="user-actions">
+          <button mat-icon-button (click)="refreshData()" matTooltip="Refresh data">
+            <mat-icon>refresh</mat-icon>
+          </button>
+          <button mat-icon-button [matMenuTriggerFor]="userMenu">
+            <mat-icon>account_circle</mat-icon>
+          </button>
+          <mat-menu #userMenu="matMenu">
+            <button mat-menu-item routerLink="/dashboard">
+              <mat-icon>dashboard</mat-icon>
+              <span>Dashboard</span>
+            </button>
+            <button mat-menu-item routerLink="/admin/domains">
+              <mat-icon>domain</mat-icon>
+              <span>Manage Domains</span>
+            </button>
+            <mat-divider></mat-divider>
+            <button mat-menu-item (click)="logout()">
+              <mat-icon>logout</mat-icon>
+              <span>Sign Out</span>
+            </button>
+          </mat-menu>
+        </div>
+      </div>
+    </mat-toolbar>
+  </header>
+
+  <!-- Main Content -->
+  <main class="admin-main">
+    <div class="container">
+      <div class="page-header">
+        <h1 class="page-title">Account Management</h1>
+        <p class="page-subtitle">Manage user accounts and their access tokens</p>
+        
+        <div class="page-actions">
+          <button mat-raised-button color="primary" (click)="toggleCreateForm()">
+            <mat-icon>{{ showCreateForm ? 'close' : 'add' }}</mat-icon>
+            {{ showCreateForm ? 'Cancel' : 'Create Account' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Create Account Form -->
+      @if (showCreateForm) {
+        <mat-card class="create-form-card">
+          <mat-card-header>
+            <mat-card-title>Create New Account</mat-card-title>
+            <mat-card-subtitle>Add a new user account to the system</mat-card-subtitle>
+          </mat-card-header>
+          
+          <mat-card-content>
+            <form [formGroup]="accountForm" (ngSubmit)="onSubmit()" class="account-form">
+              <div class="form-row">
+                <mat-form-field appearance="outline" class="form-field">
+                  <mat-label>Account Name</mat-label>
+                  <input matInput formControlName="name" placeholder="Marketing Team">
+                  @if (accountForm.get('name')?.hasError('required')) {
+                    <mat-error>Account name is required</mat-error>
+                  }
+                  @if (accountForm.get('name')?.hasError('minlength')) {
+                    <mat-error>Account name must be at least 2 characters</mat-error>
+                  }
+                </mat-form-field>
+
+                <div class="checkbox-field">
+                  <mat-checkbox formControlName="global">
+                    Global Account
+                  </mat-checkbox>
+                  <div class="checkbox-hint">
+                    Global accounts have system-wide permissions
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button mat-button type="button" (click)="toggleCreateForm()">Cancel</button>
+                <button mat-raised-button color="primary" type="submit" [disabled]="accountForm.invalid">
+                  <mat-icon>add</mat-icon>
+                  Create Account
+                </button>
+              </div>
+            </form>
+          </mat-card-content>
+        </mat-card>
+      }
+
+      <!-- Accounts Table -->
+      <mat-card class="table-card">
+        <mat-card-header>
+          <mat-card-title>All Accounts</mat-card-title>
+          <mat-card-subtitle>{{ accounts.length }} accounts in the system</mat-card-subtitle>
+        </mat-card-header>
+        
+        <mat-card-content>
+          @if (loading) {
+            <div class="loading-state">
+              <mat-spinner diameter="40"></mat-spinner>
+              <p>Loading accounts...</p>
+            </div>
+          } @else if (accounts.length === 0) {
+            <div class="empty-state">
+              <mat-icon>account_circle_off</mat-icon>
+              <h3>No accounts found</h3>
+              <p>Create your first account to get started.</p>
+              <button mat-raised-button color="primary" (click)="toggleCreateForm()">
+                <mat-icon>add</mat-icon>
+                Create Account
+              </button>
+            </div>
+          } @else {
+            <div class="table-container">
+              <table mat-table [dataSource]="accounts" class="accounts-table">
+                <!-- Name Column -->
+                <ng-container matColumnDef="name">
+                  <th mat-header-cell *matHeaderCellDef>Account Name</th>
+                  <td mat-cell *matCellDef="let account">
+                    <div class="account-cell">
+                      <span class="account-name">{{ account.name }}</span>
+                      @if (account.global) {
+                        <mat-icon class="global-badge" matTooltip="Global account">public</mat-icon>
+                      }
+                    </div>
+                  </td>
+                </ng-container>
+
+                <!-- Global Column -->
+                <ng-container matColumnDef="global">
+                  <th mat-header-cell *matHeaderCellDef>Type</th>
+                  <td mat-cell *matCellDef="let account">
+                    <span [class]="'account-type ' + (account.global ? 'global' : 'regular')">
+                      {{ account.global ? 'Global' : 'Regular' }}
+                    </span>
+                  </td>
+                </ng-container>
+
+                <!-- Default Access Token Column -->
+                <ng-container matColumnDef="defaultAccessToken">
+                  <th mat-header-cell *matHeaderCellDef>Access Token</th>
+                  <td mat-cell *matCellDef="let account">
+                    <div class="token-cell">
+                      <code class="token-display">{{ maskToken(account.defaultAccessToken) }}</code>
+                      <button mat-icon-button (click)="copyToClipboard(account.defaultAccessToken)" 
+                              matTooltip="Copy full token" class="copy-button">
+                        <mat-icon>content_copy</mat-icon>
+                      </button>
+                      <button mat-icon-button (click)="regenerateToken(account, 'access')" 
+                              matTooltip="Regenerate token" class="regenerate-button">
+                        <mat-icon>refresh</mat-icon>
+                      </button>
+                    </div>
+                  </td>
+                </ng-container>
+
+                <!-- Default Public Read Token Column -->
+                <ng-container matColumnDef="defaultPublicReadAccessToken">
+                  <th mat-header-cell *matHeaderCellDef>Public Read Token</th>
+                  <td mat-cell *matCellDef="let account">
+                    <div class="token-cell">
+                      <code class="token-display">{{ maskToken(account.defaultPublicReadAccessToken) }}</code>
+                      <button mat-icon-button (click)="copyToClipboard(account.defaultPublicReadAccessToken)" 
+                              matTooltip="Copy full token" class="copy-button">
+                        <mat-icon>content_copy</mat-icon>
+                      </button>
+                      <button mat-icon-button (click)="regenerateToken(account, 'publicRead')" 
+                              matTooltip="Regenerate token" class="regenerate-button">
+                        <mat-icon>refresh</mat-icon>
+                      </button>
+                    </div>
+                  </td>
+                </ng-container>
+
+                <!-- Actions Column -->
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef>Actions</th>
+                  <td mat-cell *matCellDef="let account">
+                    <div class="actions-cell">
+                      <button mat-icon-button [matMenuTriggerFor]="actionMenu" matTooltip="More actions">
+                        <mat-icon>more_vert</mat-icon>
+                      </button>
+                      <mat-menu #actionMenu="matMenu">
+                        <button mat-menu-item disabled>
+                          <mat-icon>edit</mat-icon>
+                          <span>Edit (Coming Soon)</span>
+                        </button>
+                        <button mat-menu-item (click)="regenerateToken(account, 'access')">
+                          <mat-icon>vpn_key</mat-icon>
+                          <span>Regenerate Access Token</span>
+                        </button>
+                        <button mat-menu-item (click)="regenerateToken(account, 'publicRead')">
+                          <mat-icon>public</mat-icon>
+                          <span>Regenerate Public Token</span>
+                        </button>
+                        <mat-divider></mat-divider>
+                        <button mat-menu-item (click)="deleteAccount(account)" class="delete-action">
+                          <mat-icon>delete</mat-icon>
+                          <span>Delete</span>
+                        </button>
+                      </mat-menu>
+                    </div>
+                  </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+              </table>
+            </div>
+          }
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <app-footer></app-footer>
+</div>

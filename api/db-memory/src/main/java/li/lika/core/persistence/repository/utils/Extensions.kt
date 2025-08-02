@@ -1,8 +1,6 @@
 package li.lika.core.persistence.repository.utils
 
-import li.lika.common.models.Permalink
 import li.lika.common.models.dtos.*
-import li.lika.core.persistence.models.PermalinkDb
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Sort.Direction
 

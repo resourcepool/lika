@@ -1,6 +1,5 @@
 package li.lika.core.services
 
-import jakarta.annotation.PostConstruct
 import li.lika.common.exceptions.DomainAlreadyExistsException
 import li.lika.common.models.Domain
 import li.lika.common.models.DomainCreator
@@ -10,7 +9,6 @@ import li.lika.security.models.AccessTokenAuthentication
 import org.springframework.cache.annotation.CacheEvict
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.stereotype.Service
-import java.util.*
 
 @Service
 class DomainService(private val domainDao: DomainDao, private val props: LikaProperties) {
@@ -33,6 +31,16 @@ class DomainService(private val domainDao: DomainDao, private val props: LikaPro
             throw DomainAlreadyExistsException()
         }
         return domainDao.save(Domain(null, false, ownerId, host, d.apiBaseUrl.trim().lowercase(), d.landingBaseUrl.trim().lowercase()))
+    }
+
+    @CacheEvict("domains", allEntries = true)
+    fun saveGlobal(d: DomainCreator, ownerId: String): Domain {
+        val host = d.host.trim().lowercase()
+        val existingDomain = domainDao.findByHostAndOwnerId(host, ownerId)
+        if (existingDomain != null) {
+            throw DomainAlreadyExistsException()
+        }
+        return domainDao.save(Domain(null, true, ownerId, host, d.apiBaseUrl.trim().lowercase(), d.landingBaseUrl.trim().lowercase()))
     }
 
     @Cacheable("domains")

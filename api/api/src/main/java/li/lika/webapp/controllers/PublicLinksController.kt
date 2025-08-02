@@ -1,8 +1,7 @@
 package li.lika.webapp.controllers
 
-import li.lika.common.models.PermalinkType
 import li.lika.common.exceptions.InvalidHostException
-import li.lika.core.props.LikaProperties
+import li.lika.common.models.PermalinkType
 import li.lika.core.services.DomainService
 import li.lika.core.services.PermalinkService
 import org.springframework.stereotype.Controller

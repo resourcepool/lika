@@ -1,10 +1,10 @@
 package li.lika.core.persistence.models
 
-import jakarta.persistence.*
-import li.lika.common.models.Permalink
-import li.lika.common.models.PermalinkTemplate
-import li.lika.common.models.PermalinkType
-import org.hibernate.annotations.UuidGenerator
+import jakarta.persistence.Entity
+import jakarta.persistence.Id
+import jakarta.persistence.Index
+import jakarta.persistence.Table
+import li.lika.common.models.*
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -31,11 +31,11 @@ class PermalinkDb() {
         type: PermalinkType,
         createdDateTime: LocalDateTime?,
         lastUpdateDateTime: LocalDateTime?,
-        activationDateTime: LocalDateTime?,
-        expiryDate: LocalDate?,
-        template: PermalinkTemplate?,
-        customTemplate: String?
-    ): this() {
+        optionActivationDateTime: LocalDateTime?,
+        optionActivationTargetUrlBeforeActivation: String?,
+        optionExpiryDate: LocalDate?,
+        optionLandingTemplateId: String?,
+    ) : this() {
         this.id = id
         this.host = host
         this.ownerId = ownerId
@@ -45,10 +45,10 @@ class PermalinkDb() {
         this.type = type
         this.createdDateTime = createdDateTime!!
         this.lastUpdateDateTime = lastUpdateDateTime!!
-        this.activationDateTime = activationDateTime
-        this.expiryDate = expiryDate
-        this.template = template
-        this.customTemplate = customTemplate
+        this.optionActivationDateTime = optionActivationDateTime
+        this.optionActivationTargetUrlBeforeActivation = optionActivationTargetUrlBeforeActivation
+        this.optionExpiryDate = optionExpiryDate
+        this.optionLandingTemplateId = optionLandingTemplateId
         this.searchString = "$slug $targetUrl $host"
     }
 
@@ -60,21 +60,46 @@ class PermalinkDb() {
     private var shortenedUrl: String = ""
     private var targetUrl: String = ""
     private var type: PermalinkType = PermalinkType.SIMPLE
-    private var createdDateTime: LocalDateTime = ZonedDateTime.now().withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime()
-    private var lastUpdateDateTime: LocalDateTime = ZonedDateTime.now().withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime()
-    private var activationDateTime: LocalDateTime? = null
-    private var expiryDate: LocalDate? = null
-    private var template: PermalinkTemplate? = null
-    private var customTemplate: String? = null
+    private var createdDateTime: LocalDateTime =
+        ZonedDateTime.now().withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime()
+    private var lastUpdateDateTime: LocalDateTime =
+        ZonedDateTime.now().withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime()
+
+    // Activation options
+    var optionActivationDateTime: LocalDateTime? = null
+    var optionActivationTargetUrlBeforeActivation: String? = null
+
+    // Expiry options
+    var optionExpiryDate: LocalDate? = null
+
+    // Landing options
+    var optionLandingTemplateId: String? = null
+
     private var searchString: String = ""
 
 
     fun toDomain(): Permalink {
         return Permalink(
-                id!!, host, ownerId, slug, shortenedUrl, targetUrl, type,
-                createdDateTime.atZone(ZoneOffset.UTC),
-                lastUpdateDateTime.atZone(ZoneOffset.UTC),
-                activationDateTime?.atZone(ZoneOffset.UTC), expiryDate, template, customTemplate
+            id!!, host, ownerId, slug, shortenedUrl, targetUrl, type,
+            createdDateTime.atZone(ZoneOffset.UTC),
+            lastUpdateDateTime.atZone(ZoneOffset.UTC),
+            Options(
+                activation = when (optionActivationDateTime?.atZone(ZoneOffset.UTC)) {
+                    null -> null
+                    else -> ActivationOptions(
+                        optionActivationDateTime?.atZone(ZoneOffset.UTC),
+                        optionActivationTargetUrlBeforeActivation
+                    )
+                },
+                landing = when (optionLandingTemplateId) {
+                    null -> null
+                    else -> LandingOptions(optionLandingTemplateId)
+                },
+                expiry = when (optionExpiryDate) {
+                    null -> null
+                    else -> ExpiryOptions(optionExpiryDate)
+                }
+            )
         )
     }
 
@@ -91,10 +116,10 @@ fun Permalink.toDb(): PermalinkDb {
         type,
         createdDateTime.withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime(),
         lastUpdateDateTime.withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime(),
-        activationDateTime?.withZoneSameInstant(ZoneOffset.UTC)?.toLocalDateTime(),
-        expiryDate,
-        template,
-        customTemplate
+        options.activation?.activationInstant?.withZoneSameInstant(ZoneOffset.UTC)?.toLocalDateTime(),
+        options.activation?.targetUrlBeforeActivation,
+        options.expiry?.expiryDate,
+        options.landing?.templateId
     )
 }
 

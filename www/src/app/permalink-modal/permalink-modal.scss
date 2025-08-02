@@ -1,0 +1,108 @@
+@use '@angular/material' as mat;
+@use '../../assets/styles/theme' as theme;
+
+$theme: theme.get-theme();
+
+.permalink-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  min-width: 500px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+mat-dialog-content {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+mat-dialog-actions {
+  gap: 8px;
+}
+
+// Custom styles for textarea
+textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+// Better spacing for form fields
+mat-form-field {
+  margin-bottom: 8px;
+}
+
+// Style for the title
+h2[mat-dialog-title] {
+  margin-bottom: 20px;
+  color: mat.get-theme-color($theme, primary);
+  font-weight: mat.get-theme-typography($theme, headline-medium, font-weight);
+}
+
+// Options section styling
+.options-section {
+  margin-top: 24px;
+  border-top: 1px solid mat.get-theme-color($theme, outline-variant);
+  padding-top: 24px;
+  
+  .section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: mat.get-theme-color($theme, on-surface);
+    margin: 0 0 16px 0;
+  }
+  
+  .options-group {
+    margin-bottom: 24px;
+    padding: 16px;
+    background-color: mat.get-theme-color($theme, surface-container-low);
+    border-radius: 8px;
+    border: 1px solid mat.get-theme-color($theme, outline-variant);
+    
+    .group-title {
+      font-size: 1rem;
+      font-weight: 500;
+      color: mat.get-theme-color($theme, on-surface-variant);
+      margin: 0 0 16px 0;
+      display: flex;
+      align-items: center;
+      
+      &::before {
+        content: '';
+        width: 4px;
+        height: 16px;
+        background-color: mat.get-theme-color($theme, primary);
+        margin-right: 8px;
+        border-radius: 2px;
+      }
+    }
+    
+    mat-form-field {
+      margin-bottom: 12px;
+      
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 600px) {
+  .permalink-form {
+    min-width: 300px;
+  }
+  
+  .options-section {
+    .options-group {
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+  }
+}
+
+// Include component theme utilities
+@include theme.component-theme($theme);

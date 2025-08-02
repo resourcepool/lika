@@ -1,8 +1,10 @@
 package li.lika.core.persistence.models
 
-import jakarta.persistence.*
+import jakarta.persistence.Entity
+import jakarta.persistence.Id
+import jakarta.persistence.Index
+import jakarta.persistence.Table
 import li.lika.common.models.Domain
-import org.hibernate.annotations.UuidGenerator
 
 @Entity
 @Table(name = "domains", indexes = [

@@ -1,0 +1,118 @@
+<h2 mat-dialog-title>{{ isEditMode ? 'Edit Permalink' : 'Create Permalink' }}</h2>
+
+<mat-dialog-content>
+  <form [formGroup]="permalinkForm" class="permalink-form">
+
+    <!-- Target URL -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Target URL</mat-label>
+      <input matInput formControlName="targetUrl" placeholder="https://example.com/page" type="url">
+      @if (permalinkForm.get('targetUrl')?.hasError('required')) {
+        <mat-error>Target URL is required</mat-error>
+      }
+      @if (permalinkForm.get('targetUrl')?.hasError('pattern')) {
+        <mat-error>Please enter a valid URL (http:// or https://)</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Domain Selection -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Domain</mat-label>
+      <mat-select formControlName="domainId">
+        @for (domain of domains; track domain.id) {
+          <mat-option [value]="domain.id">
+            {{ domain.host }}
+          </mat-option>
+        }
+      </mat-select>
+      @if (permalinkForm.get('domainId')?.hasError('required')) {
+        <mat-error>Domain is required</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Type Selection -->
+    <!--
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Permalink Type</mat-label>
+      <mat-select formControlName="type">
+        @for (type of permalinkTypes; track type) {
+          <mat-option [value]="type">
+            {{ type === 'SIMPLE' ? 'Simple Redirect' : 'With Landing Page' }}
+          </mat-option>
+        }
+      </mat-select>
+      @if (permalinkForm.get('type')?.hasError('required')) {
+        <mat-error>Type is required</mat-error>
+      }
+    </mat-form-field>
+    -->
+    <!-- Slug -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Custom Slug (optional)</mat-label>
+      <input matInput formControlName="slug" placeholder="my-custom-slug">
+      <mat-hint>Leave empty to auto-generate</mat-hint>
+    </mat-form-field>
+
+    <!-- Options Section -->
+    <div formGroupName="options" class="options-section">
+      <h3 class="section-title">Advanced Options</h3>
+
+      <!-- Landing Options (only shown for WITH_LANDING type) -->
+      <!--
+      @if (isWithLanding) {
+        <div formGroupName="landing" class="options-group">
+          <h4 class="group-title">Landing Page Options</h4>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Template ID</mat-label>
+            <input matInput formControlName="templateId" placeholder="landing-template-1">
+            @if (permalinkForm.get('options.landing.templateId')?.hasError('required')) {
+              <mat-error>Template ID is required for landing pages</mat-error>
+            }
+          </mat-form-field>
+        </div>
+      }
+      -->
+
+      <!-- Activation Options -->
+      <div formGroupName="activation" class="options-group">
+        <h4 class="group-title">Activation Settings</h4>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Activation Date & Time (optional)</mat-label>
+          <input matInput [matDatepicker]="activationPicker" formControlName="activationInstant">
+          <mat-datepicker-toggle matIconSuffix [for]="activationPicker"></mat-datepicker-toggle>
+          <mat-datepicker #activationPicker></mat-datepicker>
+          <mat-hint>When should this permalink become active?</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Target URL Before Activation (optional)</mat-label>
+          <input matInput formControlName="targetUrlBeforeActivation"
+                 placeholder="https://example.com/coming-soon" type="url">
+          <mat-hint>URL to redirect to before activation</mat-hint>
+        </mat-form-field>
+      </div>
+
+      <!-- Expiry Options -->
+      <div formGroupName="expiry" class="options-group">
+        <h4 class="group-title">Expiry Settings</h4>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Expiry Date (optional)</mat-label>
+          <input matInput [matDatepicker]="expiryPicker" formControlName="expiryDate">
+          <mat-datepicker-toggle matIconSuffix [for]="expiryPicker"></mat-datepicker-toggle>
+          <mat-datepicker #expiryPicker></mat-datepicker>
+          <mat-hint>When should this permalink expire?</mat-hint>
+        </mat-form-field>
+      </div>
+    </div>
+
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-raised-button color="primary"
+          (click)="onSubmit()"
+          [disabled]="permalinkForm.invalid">
+    {{ isEditMode ? 'Update' : 'Create' }} Permalink
+  </button>
+</mat-dialog-actions>
