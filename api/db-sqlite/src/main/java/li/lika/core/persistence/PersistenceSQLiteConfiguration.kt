@@ -18,6 +18,7 @@ import javax.sql.DataSource
 class PersistenceSQLiteConfiguration {
 
     val logger = KotlinLogging.logger {}
+
     @PostConstruct
     fun init() {
         logger.info("Initialized SQLite Database")

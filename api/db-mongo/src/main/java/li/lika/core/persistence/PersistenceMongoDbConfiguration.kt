@@ -1,4 +1,4 @@
-package li.lika
+package li.lika.core.persistence
 
 import com.mongodb.ConnectionString
 import com.mongodb.MongoClientSettings
@@ -12,7 +12,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.data.mongodb.core.MongoTemplate
-
 
 @Configuration
 @EnableConfigurationProperties(MongoProperties::class)
@@ -32,7 +31,12 @@ class PersistenceMongoDbConfiguration {
         val credentials = MongoCredential.createCredential(mongoProperties.username!!, mongoProperties.userDatabase!!, mongoProperties.password!!)
         val settings = MongoClientSettings.builder()
                 .credential(credentials)
-                .applyToClusterSettings { t -> t.hosts(mongoProperties.hosts.map { h -> ServerAddress(h.host!!, h.port!!) }) }
+                .applyToClusterSettings { t -> t.hosts(mongoProperties.hosts.map { h ->
+                    ServerAddress(
+                        h.host!!,
+                        h.port!!
+                    )
+                }) }
                 .applyToSslSettings { t -> t.enabled(mongoProperties.tlsEnabled) }
                 .build()
         return MongoClients.create(settings)

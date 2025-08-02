@@ -44,11 +44,14 @@ dependencies {
 
     if (project.hasProperty("dbMongo")) {
         runtimeOnly(project(":db-mongo"))
+        println("Using MongoDB as database")
     } else if (project.hasProperty("dbSqlite")) {
         runtimeOnly(project(":db-sqlite"))
+        println("Using SQLite as database")
     } else {
         //runtimeOnly(project(":db-sqlite"))
         runtimeOnly(project(":db-memory"))
+        println("Using Memory as database")
     }
     implementation("com.fasterxml.jackson.core:jackson-annotations:${Versions.jackson}")
     implementation("com.fasterxml.jackson.core:jackson-databind:${Versions.jackson}")
