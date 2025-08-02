@@ -14,7 +14,7 @@ $theme: theme.get-theme();
   position: sticky;
   top: 0;
   z-index: 1000;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   
   .main-toolbar {
     height: 64px;
@@ -66,13 +66,9 @@ $theme: theme.get-theme();
           height: 20px;
         }
         
-        span {
-          font-weight: 500;
-        }
+        span { font-weight: 500; }
         
-        &:hover {
-          background-color: rgba(255, 255, 255, 0.1);
-        }
+        &:hover { background-color: rgba(255,255,255,0.1); }
         
         .dropdown-icon {
           margin-left: 4px;

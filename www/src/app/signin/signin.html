@@ -44,11 +44,15 @@
               [disabled]="signinForm.invalid || isLoading"
               class="signin-button">
               @if (isLoading) {
-                <mat-icon>hourglass_empty</mat-icon>
-                <span>Authenticating...</span>
+                <ng-container>
+                  <mat-icon>hourglass_empty</mat-icon>
+                  <span>Authenticating...</span>
+                </ng-container>
               } @else {
-                <mat-icon>login</mat-icon>
-                <span>Sign In</span>
+                <ng-container>
+                  <mat-icon>login</mat-icon>
+                  <span>Sign In</span>
+                </ng-container>
               }
             </button>
           </div>
