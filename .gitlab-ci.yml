@@ -56,7 +56,7 @@ build-api-memory:
       fi
   rules:
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
-    - if: $CI_PIPELINE_SOURCE == "web"
+
 
 # Build API with SQLite database
 build-api-sqlite:
@@ -96,7 +96,7 @@ build-api-sqlite:
       fi
   rules:
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
-    - if: $CI_PIPELINE_SOURCE == "web"
+
 
 # Build API with MongoDB database
 build-api-mongo:
@@ -136,7 +136,7 @@ build-api-mongo:
       fi
   rules:
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
-    - if: $CI_PIPELINE_SOURCE == "web"
+
 
 # Build web application
 build-www:
@@ -224,7 +224,7 @@ build-www:
     expire_in: 1 hour
   rules:
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
-    - if: $CI_PIPELINE_SOURCE == "web"
+
 
 # Deploy to GitLab Pages (equivalent to GitHub Pages)
 pages:
@@ -249,7 +249,7 @@ pages:
     - build-www
   rules:
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
-    - if: $CI_PIPELINE_SOURCE == "web"
+
     - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
 
 # Optional: Add a job for running tests
@@ -269,7 +269,7 @@ test-api:
       - api/*/build/reports/
   rules:
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
-    - if: $CI_PIPELINE_SOURCE == "web"
+
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 test-www:
@@ -292,5 +292,5 @@ test-www:
         path: www/coverage/cobertura-coverage.xml
   rules:
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
-    - if: $CI_PIPELINE_SOURCE == "web"
+
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
