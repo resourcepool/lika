@@ -58,9 +58,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}
           tags: |
-            type=ref,event=tag,suffix=memory
-            type=raw,value=latest,suffix=memory,enable={{is_default_branch}}
-            type=sha,suffix=memory
+            type=ref,event=tag,suffix=-memory
+            type=raw,value=latest,suffix=-memory,enable={{is_default_branch}}
+            type=sha,suffix=-memory
 
       - name: Build and push API container
         id: build
@@ -106,9 +106,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}
           tags: |
-            type=ref,event=tag,suffix=sqlite
-            type=raw,value=latest,suffix=sqlite,enable={{is_default_branch}}
-            type=sha,suffix=sqlite
+            type=ref,event=tag,suffix=-sqlite
+            type=raw,value=latest,suffix=-sqlite,enable={{is_default_branch}}
+            type=sha,suffix=-sqlite
 
       - name: Build and push API container
         id: build
@@ -154,9 +154,9 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.API_IMAGE_NAME }}
           tags: |
-            type=ref,event=tag,suffix=mongo
-            type=raw,value=latest,suffix=mongo,enable={{is_default_branch}}
-            type=sha,suffix=mongo
+            type=ref,event=tag,suffix=-mongo
+            type=raw,value=latest,suffix=-mongo,enable={{is_default_branch}}
+            type=sha,suffix=-mongo
 
       - name: Build and push API container
         id: build
