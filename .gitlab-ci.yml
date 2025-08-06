@@ -145,8 +145,7 @@ package-api-memory:
     - docker:24.0.5-dind
   variables:
     DOCKER_HOST: tcp://docker:2376
-    DOCKER_TLS_VERIFY: 1
-    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 0
   dependencies:
     - build-api-memory
   script:
@@ -179,8 +178,7 @@ package-api-sqlite:
     - docker:24.0.5-dind
   variables:
     DOCKER_HOST: tcp://docker:2376
-    DOCKER_TLS_VERIFY: 1
-    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 0
   dependencies:
     - build-api-sqlite
   script:
@@ -213,8 +211,7 @@ package-api-mongo:
     - docker:24.0.5-dind
   variables:
     DOCKER_HOST: tcp://docker:2376
-    DOCKER_TLS_VERIFY: 1
-    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 0
   dependencies:
     - build-api-mongo
   script:
@@ -247,8 +244,7 @@ package-www:
     - docker:24.0.5-dind
   variables:
     DOCKER_HOST: tcp://docker:2376
-    DOCKER_TLS_VERIFY: 1
-    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 0
   dependencies:
     - build-www
   script:
@@ -285,8 +281,7 @@ deploy-api-memory:
     - docker:24.0.5-dind
   variables:
     DOCKER_HOST: tcp://docker:2376
-    DOCKER_TLS_VERIFY: 1
-    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 0
   dependencies:
     - package-api-memory
   before_script:
@@ -325,8 +320,7 @@ deploy-api-sqlite:
     - docker:24.0.5-dind
   variables:
     DOCKER_HOST: tcp://docker:2376
-    DOCKER_TLS_VERIFY: 1
-    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 0
   dependencies:
     - package-api-sqlite
   before_script:
@@ -365,8 +359,7 @@ deploy-api-mongo:
     - docker:24.0.5-dind
   variables:
     DOCKER_HOST: tcp://docker:2376
-    DOCKER_TLS_VERIFY: 1
-    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 0
   dependencies:
     - package-api-mongo
   before_script:
@@ -405,8 +398,7 @@ deploy-www:
     - docker:24.0.5-dind
   variables:
     DOCKER_HOST: tcp://docker:2376
-    DOCKER_TLS_VERIFY: 1
-    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 0
   dependencies:
     - package-www
   before_script:
