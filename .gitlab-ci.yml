@@ -1,0 +1,296 @@
+# GitLab CI/CD Pipeline for Lika Project
+# Translated from GitHub Actions workflow
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: "/certs"
+  REGISTRY: $CI_REGISTRY
+  API_IMAGE_NAME: $CI_PROJECT_PATH/api
+  WWW_IMAGE_NAME: $CI_PROJECT_PATH/www
+
+stages:
+  - build
+  - deploy
+
+# Cache configuration for Gradle and npm
+cache:
+  paths:
+    - .gradle/
+    - www/node_modules/
+
+# Build API with memory database
+build-api-memory:
+  stage: build
+  image: openjdk:21-jdk
+  services:
+    - docker:24.0.5-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - apt-get update -qy
+    - apt-get install -y docker.io
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - cd api
+    - chmod +x gradlew
+    - ./gradlew build -x test
+    - |
+      # Create image tags
+      if [[ "$CI_COMMIT_TAG" ]]; then
+        TAG="${CI_COMMIT_TAG}-memory"
+        LATEST_TAG="latest-memory"
+      else
+        TAG="${CI_COMMIT_SHA:0:8}-memory"
+        LATEST_TAG=""
+      fi
+      
+      # Build and push Docker image
+      docker build -t "$REGISTRY/$API_IMAGE_NAME:$TAG" api/
+      docker push "$REGISTRY/$API_IMAGE_NAME:$TAG"
+      
+      if [[ -n "$LATEST_TAG" && "$CI_COMMIT_REF_NAME" == "$CI_DEFAULT_BRANCH" ]]; then
+        docker tag "$REGISTRY/$API_IMAGE_NAME:$TAG" "$REGISTRY/$API_IMAGE_NAME:$LATEST_TAG"
+        docker push "$REGISTRY/$API_IMAGE_NAME:$LATEST_TAG"
+      fi
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+    - if: $CI_PIPELINE_SOURCE == "web"
+
+# Build API with SQLite database
+build-api-sqlite:
+  stage: build
+  image: openjdk:21-jdk
+  services:
+    - docker:24.0.5-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - apt-get update -qy
+    - apt-get install -y docker.io
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - cd api
+    - chmod +x gradlew
+    - ./gradlew build -x test
+    - |
+      # Create image tags
+      if [[ "$CI_COMMIT_TAG" ]]; then
+        TAG="${CI_COMMIT_TAG}-sqlite"
+        LATEST_TAG="latest-sqlite"
+      else
+        TAG="${CI_COMMIT_SHA:0:8}-sqlite"
+        LATEST_TAG=""
+      fi
+      
+      # Build and push Docker image
+      docker build -t "$REGISTRY/$API_IMAGE_NAME:$TAG" api/
+      docker push "$REGISTRY/$API_IMAGE_NAME:$TAG"
+      
+      if [[ -n "$LATEST_TAG" && "$CI_COMMIT_REF_NAME" == "$CI_DEFAULT_BRANCH" ]]; then
+        docker tag "$REGISTRY/$API_IMAGE_NAME:$TAG" "$REGISTRY/$API_IMAGE_NAME:$LATEST_TAG"
+        docker push "$REGISTRY/$API_IMAGE_NAME:$LATEST_TAG"
+      fi
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+    - if: $CI_PIPELINE_SOURCE == "web"
+
+# Build API with MongoDB database
+build-api-mongo:
+  stage: build
+  image: openjdk:21-jdk
+  services:
+    - docker:24.0.5-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - apt-get update -qy
+    - apt-get install -y docker.io
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - cd api
+    - chmod +x gradlew
+    - ./gradlew build -x test
+    - |
+      # Create image tags
+      if [[ "$CI_COMMIT_TAG" ]]; then
+        TAG="${CI_COMMIT_TAG}-mongo"
+        LATEST_TAG="latest-mongo"
+      else
+        TAG="${CI_COMMIT_SHA:0:8}-mongo"
+        LATEST_TAG=""
+      fi
+      
+      # Build and push Docker image
+      docker build -t "$REGISTRY/$API_IMAGE_NAME:$TAG" api/
+      docker push "$REGISTRY/$API_IMAGE_NAME:$TAG"
+      
+      if [[ -n "$LATEST_TAG" && "$CI_COMMIT_REF_NAME" == "$CI_DEFAULT_BRANCH" ]]; then
+        docker tag "$REGISTRY/$API_IMAGE_NAME:$TAG" "$REGISTRY/$API_IMAGE_NAME:$LATEST_TAG"
+        docker push "$REGISTRY/$API_IMAGE_NAME:$LATEST_TAG"
+      fi
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+    - if: $CI_PIPELINE_SOURCE == "web"
+
+# Build web application
+build-www:
+  stage: build
+  image: node:22
+  services:
+    - docker:24.0.5-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_TLS_CERTDIR: "/certs"
+  cache:
+    key:
+      files:
+        - www/package-lock.json
+    paths:
+      - www/node_modules/
+  before_script:
+    - apt-get update -qy
+    - apt-get install -y docker.io
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - cd www
+    - npm ci
+    - npm run build
+    - |
+      # Create Dockerfile
+      cat > Dockerfile << 'EOF'
+      FROM nginx:alpine
+      COPY dist/links-webapp /usr/share/nginx/html
+      COPY nginx.conf /etc/nginx/nginx.conf
+      EXPOSE 80
+      CMD ["nginx", "-g", "daemon off;"]
+      EOF
+      
+      # Create nginx config
+      cat > nginx.conf << 'EOF'
+      events {
+          worker_connections 1024;
+      }
+      http {
+          include       /etc/nginx/mime.types;
+          default_type  application/octet-stream;
+          sendfile        on;
+          keepalive_timeout  65;
+          
+          server {
+              listen       80;
+              server_name  localhost;
+              root   /usr/share/nginx/html;
+              index  index.html;
+              
+              location / {
+                  try_files $uri $uri/ /index.html;
+              }
+              
+              error_page   500 502 503 504  /50x.html;
+              location = /50x.html {
+                  root   /usr/share/nginx/html;
+              }
+          }
+      }
+      EOF
+      
+      # Create image tags
+      if [[ "$CI_COMMIT_TAG" ]]; then
+        TAG="$CI_COMMIT_TAG"
+        LATEST_TAG="latest"
+      else
+        TAG="${CI_COMMIT_SHA:0:8}"
+        LATEST_TAG=""
+      fi
+      
+      # Build and push Docker image
+      docker build -t "$REGISTRY/$WWW_IMAGE_NAME:$TAG" .
+      docker push "$REGISTRY/$WWW_IMAGE_NAME:$TAG"
+      
+      if [[ -n "$LATEST_TAG" && "$CI_COMMIT_REF_NAME" == "$CI_DEFAULT_BRANCH" ]]; then
+        docker tag "$REGISTRY/$WWW_IMAGE_NAME:$TAG" "$REGISTRY/$WWW_IMAGE_NAME:$LATEST_TAG"
+        docker push "$REGISTRY/$WWW_IMAGE_NAME:$LATEST_TAG"
+      fi
+  artifacts:
+    paths:
+      - www/dist/links-webapp/
+    expire_in: 1 hour
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+    - if: $CI_PIPELINE_SOURCE == "web"
+
+# Deploy to GitLab Pages (equivalent to GitHub Pages)
+pages:
+  stage: deploy
+  image: node:22
+  cache:
+    key:
+      files:
+        - www/package-lock.json
+    paths:
+      - www/node_modules/
+  script:
+    - cd www
+    - npm ci
+    - npm run build -- --configuration=production
+    - mkdir -p ../public
+    - cp -r dist/links-webapp/* ../public/
+  artifacts:
+    paths:
+      - public
+  dependencies:
+    - build-www
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+
+# Optional: Add a job for running tests
+test-api:
+  stage: build
+  image: openjdk:21-jdk
+  script:
+    - cd api
+    - chmod +x gradlew
+    - ./gradlew test
+  artifacts:
+    reports:
+      junit:
+        - api/*/build/test-results/test/TEST-*.xml
+    paths:
+      - api/*/build/test-results/
+      - api/*/build/reports/
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+test-www:
+  stage: build
+  image: node:22
+  cache:
+    key:
+      files:
+        - www/package-lock.json
+    paths:
+      - www/node_modules/
+  script:
+    - cd www
+    - npm ci
+    - npm test -- --watch=false --browsers=ChromeHeadless
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: www/coverage/cobertura-coverage.xml
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
