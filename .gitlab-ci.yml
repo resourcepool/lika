@@ -29,8 +29,6 @@ build-api-memory:
     DOCKER_TLS_VERIFY: 1
     DOCKER_TLS_CERTDIR: "/certs"
   before_script:
-    - apt-get update -qy
-    - apt-get install -y docker.io
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   script:
     - cd api
@@ -45,7 +43,7 @@ build-api-memory:
         TAG="${CI_COMMIT_SHA:0:8}-memory"
         LATEST_TAG=""
       fi
-      
+
       # Build and push Docker image
       docker build -t "$REGISTRY/$API_IMAGE_NAME:$TAG" api/
       docker push "$REGISTRY/$API_IMAGE_NAME:$TAG"
@@ -69,8 +67,6 @@ build-api-sqlite:
     DOCKER_TLS_VERIFY: 1
     DOCKER_TLS_CERTDIR: "/certs"
   before_script:
-    - apt-get update -qy
-    - apt-get install -y docker.io
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   script:
     - cd api
@@ -109,8 +105,6 @@ build-api-mongo:
     DOCKER_TLS_VERIFY: 1
     DOCKER_TLS_CERTDIR: "/certs"
   before_script:
-    - apt-get update -qy
-    - apt-get install -y docker.io
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   script:
     - cd api
@@ -155,8 +149,6 @@ build-www:
     paths:
       - www/node_modules/
   before_script:
-    - apt-get update -qy
-    - apt-get install -y docker.io
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
   script:
     - cd www
