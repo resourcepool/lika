@@ -78,9 +78,7 @@
         <h4 class="group-title">Activation Settings</h4>
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Activation Date & Time (optional)</mat-label>
-          <input matInput [matDatepicker]="activationPicker" formControlName="activationInstant">
-          <mat-datepicker-toggle matIconSuffix [for]="activationPicker"></mat-datepicker-toggle>
-          <mat-datepicker #activationPicker></mat-datepicker>
+          <input matInput type="datetime-local" formControlName="activationInstant">
           <mat-hint>When should this permalink become active?</mat-hint>
         </mat-form-field>
 

@@ -43,13 +43,22 @@ export class PermalinkModal implements OnInit {
     this.initializeForm();
 
     if (this.isEditMode && this.data.permalink) {
-      // Ensure options structure exists for editing
+      // Ensure options structure exists for editing and convert date strings to Date objects
       const permalinkData = {
         ...this.data.permalink,
         options: {
-          activation: this.data.permalink.options?.activation || { activationInstant: null, targetUrlBeforeActivation: '' },
+          activation: {
+            activationInstant: this.data.permalink.options?.activation?.activationInstant 
+              ? this.convertISOToDatetimeLocal(this.data.permalink.options.activation.activationInstant)
+              : null,
+            targetUrlBeforeActivation: this.data.permalink.options?.activation?.targetUrlBeforeActivation || ''
+          },
           landing: this.data.permalink.options?.landing || { templateId: '' },
-          expiry: this.data.permalink.options?.expiry || { expiryDate: null }
+          expiry: {
+            expiryDate: this.data.permalink.options?.expiry?.expiryDate 
+              ? new Date(this.data.permalink.options.expiry.expiryDate)
+              : null
+          }
         }
       };
       this.permalinkForm.patchValue(permalinkData);
@@ -95,12 +104,26 @@ export class PermalinkModal implements OnInit {
     if (this.permalinkForm.valid) {
       const formValue = this.permalinkForm.value;
 
-      // Convert dates to ISO strings if they exist
+      // Convert dates to proper format if they exist
       if (formValue.options?.activation?.activationInstant) {
-        formValue.options.activation.activationInstant = new Date(formValue.options.activation.activationInstant).toISOString();
+        // datetime-local input returns string in format "YYYY-MM-DDTHH:mm"
+        // We need to convert it to ISO string for the API
+        const activationDateTime = new Date(formValue.options.activation.activationInstant);
+        if (!isNaN(activationDateTime.getTime())) {
+          formValue.options.activation.activationInstant = activationDateTime.toISOString();
+        } else {
+          formValue.options.activation.activationInstant = null;
+        }
       }
+      
       if (formValue.options?.expiry?.expiryDate) {
-        formValue.options.expiry.expiryDate = new Date(formValue.options.expiry.expiryDate).toLocaleDateString('en-CA'); // YYYY-MM-DD format
+        const expiryDate = new Date(formValue.options.expiry.expiryDate);
+        if (!isNaN(expiryDate.getTime())) {
+          // Use toISOString and extract date part for consistent YYYY-MM-DD format
+          formValue.options.expiry.expiryDate = expiryDate.toISOString().split('T')[0];
+        } else {
+          formValue.options.expiry.expiryDate = null;
+        }
       }
 
       // Clean up empty options
@@ -112,17 +135,19 @@ export class PermalinkModal implements OnInit {
 
   private cleanupEmptyOptions(options: OptionsDto) {
     // Remove empty activation options
-    if (options.activation && !options.activation.activationInstant && !options.activation.targetUrlBeforeActivation) {
+    if (options.activation && 
+        (!options.activation.activationInstant || options.activation.activationInstant === null) && 
+        (!options.activation.targetUrlBeforeActivation || options.activation.targetUrlBeforeActivation.trim() === '')) {
       delete options.activation;
     }
 
     // Remove empty landing options
-    if (options.landing && !options.landing.templateId) {
+    if (options.landing && (!options.landing.templateId || options.landing.templateId.trim() === '')) {
       delete options.landing;
     }
 
     // Remove empty expiry options
-    if (options.expiry && !options.expiry.expiryDate) {
+    if (options.expiry && (!options.expiry.expiryDate || options.expiry.expiryDate === null)) {
       delete options.expiry;
     }
   }
@@ -138,5 +163,22 @@ export class PermalinkModal implements OnInit {
   get hasActivationOptions() {
     const activation = this.permalinkForm.get('options.activation');
     return activation?.get('activationInstant')?.value || activation?.get('targetUrlBeforeActivation')?.value;
+  }
+
+  private convertISOToDatetimeLocal(isoString: string): string {
+    // Convert ISO string to datetime-local format (YYYY-MM-DDTHH:mm)
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) {
+      return '';
+    }
+    
+    // Get local datetime in the format required by datetime-local input
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 }
