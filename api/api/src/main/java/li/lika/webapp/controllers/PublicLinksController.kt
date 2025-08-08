@@ -30,7 +30,7 @@ class PublicLinksController(
             logger.debug("X-Forwarded-Host: $forwardedHost")
             host = forwardedHost.trim().lowercase()
         }
-        val pl = permalinkService.findOneByHostAndSlug(host, rootPermalink)
+        val pl = permalinkService.findOneByHostAndSlug(host!!, rootPermalink)
         if (pl.type == PermalinkType.SIMPLE) {
             return ModelAndView("redirect:${pl.targetUrl}", model)
         }
