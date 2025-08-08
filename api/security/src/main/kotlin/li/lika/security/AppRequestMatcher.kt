@@ -9,6 +9,10 @@ class AppRequestMatcher : RequestMatcher {
         if (HttpMethod.OPTIONS.matches(request.method)) {
             return false
         }
+        if (request.requestURI.startsWith("/actuator/")) {
+            // Public endpoints are not protected by this matcher
+            return false
+        }
         // NB: ALL uris will be processed by this filter. NOTHING is public here.
         // All non-authenticated requests will be considered "anonymous" with authority "role_anonymous"
         return true

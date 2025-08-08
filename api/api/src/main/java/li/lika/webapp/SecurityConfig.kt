@@ -71,7 +71,9 @@ class SecurityConfig(
         filterConfig
             .addFilterBefore(authFilter, BasicAuthenticationFilter::class.java)
             .authorizeHttpRequests { customizer ->
-                customizer.requestMatchers("/api/search/**")
+                customizer
+                    .requestMatchers("/actuator/**").permitAll()
+                    .requestMatchers("/api/search/**")
                     .hasAnyAuthority(
                         *(Roles.distinct(
                             Roles.globalRoleAdmin().toAuthority(),
