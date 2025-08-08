@@ -58,7 +58,7 @@ export class PermalinkModal implements OnInit {
       }
 
       return timer(300).pipe(
-        switchMap(() => this.permalinkService.checkSlugAvailability(control.value, domainId)),
+        switchMap(() => this.permalinkService.checkSlugAvailability(control.value, domainId, this.authService.isAdmin())),
         map(() => null), // Success means slug is available
         catchError((error) => {
           // If error occurs, slug is not available

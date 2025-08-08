@@ -48,10 +48,10 @@ export class PermalinkService {
   /**
    * Check if a slug is available for a domain
    */
-  checkSlugAvailability(slug: string, domainId: string): Observable<void> {
+  checkSlugAvailability(slug: string, domainId: string, admin = false): Observable<void> {
     const params = new HttpParams().set('domainId', domainId);
 
-    return this.http.get<void>(`${this.baseUrl}/slug/${encodeURIComponent(slug)}`, { params })
+    return this.http.get<void>(`${admin ? this.baseUrlAdmin : this.baseUrl}/slug/${encodeURIComponent(slug)}`, { params })
       .pipe(
         catchError(this.handleError)
       );
