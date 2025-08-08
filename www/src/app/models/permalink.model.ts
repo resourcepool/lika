@@ -138,6 +138,35 @@ export interface PageResponse<T> {
   items: T[];
 }
 
+// Archive Models
+export interface PermalinkArchiveItem {
+  targetUrl: string;
+  slug?: string;
+  type: PermalinkType;
+  options: OptionsDto;
+}
+
+export interface DomainArchiveItem {
+  standard: boolean;
+  host: string;
+  apiBaseUrl: string;
+  landingBaseUrl?: string;
+  links: PermalinkArchiveItem[];
+}
+
+export interface AccountArchiveItem {
+  name: string;
+  root: boolean;
+  global: boolean;
+  secretToken?: string;
+  publicReadOnlyToken?: string;
+  domains: DomainArchiveItem[];
+}
+
+export interface DatabaseArchive {
+  accounts: AccountArchiveItem[];
+}
+
 // API Response Helpers
 export interface ApiError {
   message: string;

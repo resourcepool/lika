@@ -1,0 +1,123 @@
+<mat-toolbar>
+  <span>Archive Management</span>
+  <span class="toolbar-spacer"></span>
+  <button mat-button routerLink="/admin/domains" matTooltip="Manage Domains">
+    <mat-icon>domain</mat-icon>
+    Domains
+  </button>
+  <button mat-button routerLink="/admin/accounts" matTooltip="Manage Accounts">
+    <mat-icon>people</mat-icon>
+    Accounts
+  </button>
+  <button mat-button routerLink="/dashboard" matTooltip="Back to Dashboard">
+    <mat-icon>dashboard</mat-icon>
+    Dashboard
+  </button>
+  <button mat-button (click)="logout()" matTooltip="Sign Out">
+    <mat-icon>logout</mat-icon>
+    Logout
+  </button>
+</mat-toolbar>
+
+<div class="content">
+  <div class="container">
+    <mat-card class="archive-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>archive</mat-icon>
+          Archive Management
+        </mat-card-title>
+        <mat-card-subtitle>
+          Export or import your complete Lika database
+        </mat-card-subtitle>
+      </mat-card-header>
+      
+      <mat-card-content>
+        <div class="archive-sections">
+          <!-- Export Section -->
+          <div class="archive-section">
+            <h3>
+              <mat-icon>download</mat-icon>
+              Export Archive
+            </h3>
+            <p>
+              Download a complete backup of your Lika database including all accounts, domains, and permalinks.
+              The export will be saved as a JSON file to your computer.
+            </p>
+            <button 
+              mat-raised-button 
+              color="primary" 
+              (click)="exportArchive()"
+              [disabled]="loading"
+              class="export-button">
+              <mat-icon>file_download</mat-icon>
+              Export Database
+              <mat-spinner *ngIf="loading" diameter="20" class="button-spinner"></mat-spinner>
+            </button>
+          </div>
+
+          <mat-divider></mat-divider>
+
+          <!-- Import Section -->
+          <div class="archive-section">
+            <h3>
+              <mat-icon>upload</mat-icon>
+              Import Archive
+            </h3>
+            <p>
+              Import a previously exported Lika database archive. This will add the data from the archive to your existing database.
+            </p>
+            
+            <div class="import-controls">
+              <input 
+                #fileInput
+                type="file" 
+                accept=".json,application/json"
+                (change)="onFileSelected($event)"
+                class="file-input">
+              
+              <button 
+                mat-stroked-button 
+                (click)="fileInput.click()"
+                [disabled]="loading">
+                <mat-icon>folder_open</mat-icon>
+                Select JSON File
+              </button>
+              
+              <div *ngIf="selectedFile" class="selected-file">
+                <mat-icon>description</mat-icon>
+                <span>{{ selectedFile.name }}</span>
+                <button 
+                  mat-icon-button 
+                  (click)="clearFileInput()"
+                  matTooltip="Clear selection"
+                  [disabled]="loading">
+                  <mat-icon>clear</mat-icon>
+                </button>
+              </div>
+            </div>
+
+            <button 
+              mat-raised-button 
+              color="accent" 
+              (click)="importArchive()"
+              [disabled]="!selectedFile || loading"
+              class="import-button">
+              <mat-icon>file_upload</mat-icon>
+              Import Archive
+              <mat-spinner *ngIf="loading" diameter="20" class="button-spinner"></mat-spinner>
+            </button>
+
+            <div class="import-warning">
+              <mat-icon>warning</mat-icon>
+              <span>
+                <strong>Warning:</strong> Importing an archive will add data to your existing database. 
+                Make sure to export a backup before importing if you want to preserve your current state.
+              </span>
+            </div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

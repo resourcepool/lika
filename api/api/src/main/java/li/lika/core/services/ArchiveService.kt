@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 
 @Service
 class ArchiveService(
@@ -100,7 +101,7 @@ class ArchiveService(
                 logger.info("Found account {}: {}", account.name, account.id)
             } else {
                 logger.info("No matching account, will create one")
-                account = Account(null, acc.name, acc.global, acc.secretToken!!, acc.publicReadOnlyToken!!)
+                account = Account(UUID.randomUUID().toString(), acc.name, acc.global, acc.secretToken!!, acc.publicReadOnlyToken!!)
             }
             return@runInTransaction accountDao.save(account)
         }
@@ -119,7 +120,7 @@ class ArchiveService(
                 }
             } else {
                 logger.info("No matching domain, will create one")
-                domain = Domain(null, dom.standard, ownerId, dom.host, dom.apiBaseUrl, dom.landingBaseUrl)
+                domain = Domain(UUID.randomUUID().toString(), dom.standard, ownerId, dom.host, dom.apiBaseUrl, dom.landingBaseUrl)
             }
             return@runInTransaction domainDao.save(domain)
         }
