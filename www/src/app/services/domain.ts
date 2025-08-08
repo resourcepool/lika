@@ -47,12 +47,14 @@ export class DomainService {
    * Admin: Create a new domain
    */
   createDomain(domain: DomainCreator, ownerId?: string, global?: boolean): Observable<Domain> {
-    const params = new HttpParams();
+    let params = new HttpParams();
+    console.log(domain);
+    console.log(ownerId);
     if (ownerId) {
-      params.set('ownerId', ownerId);
+      params = params.set('ownerId', ownerId);
     }
     if (global) {
-      params?.set('global', 'true');
+      params = params.set('global', 'true');
     }
     return this.http.post<Domain>(this.adminBaseUrl, domain, { params })
       .pipe(
@@ -64,10 +66,12 @@ export class DomainService {
    * Admin: Create a new domain with admin creator
    */
   createAdminDomain(domain: AdminDomainCreator): Observable<Domain> {
-    return this.http.post<Domain>(this.adminBaseUrl, domain)
-      .pipe(
-        catchError(this.handleError)
-      );
+    console.log(domain);
+    return this.createDomain({
+      host: domain.host,
+      apiBaseUrl: domain.apiBaseUrl,
+      landingBaseUrl: domain.landingBaseUrl || ''
+    }, domain.targetOwnerId, domain.global);
   }
 
   /**

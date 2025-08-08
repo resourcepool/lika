@@ -100,6 +100,7 @@ export interface DomainCreator {
 export interface AdminDomainCreator {
   host: string;
   targetOwnerId?: string;
+  global?: boolean;
   apiBaseUrl: string;
   landingBaseUrl: string;
 }

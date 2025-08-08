@@ -103,28 +103,40 @@ export class AccountManagementComponent implements OnInit {
   onSubmit() {
     if (this.accountForm.valid) {
       const accountData: AccountCreator = this.accountForm.value;
-      
-      // TODO: Implement account creation when API service is available
-      this.snackBar.open('Account creation will be implemented when API service is available', 'Close', {
-        duration: 3000
+
+      this.accountService.createAccount(accountData).subscribe({
+        next: (createdAccount) => {
+          this.snackBar.open(`Account "${createdAccount.name}" created successfully!`, 'Close', {
+            duration: 3000
+          });
+          this.loadAccounts();
+          this.toggleCreateForm();
+        },
+        error: (error: ApiError) => {
+          console.error('Failed to create account:', error);
+          this.snackBar.open(`Failed to create account: ${error.message}`, 'Close', {
+            duration: 5000
+          });
+        }
       });
-      
-      // Mock success for now
-      setTimeout(() => {
-        this.snackBar.open('Account created successfully', 'Close', {
-          duration: 3000
-        });
-        this.loadAccounts();
-        this.toggleCreateForm();
-      }, 1000);
     }
   }
 
   deleteAccount(account: Account) {
     if (confirm(`Are you sure you want to delete account "${account.name}"?`)) {
-      // TODO: Implement account deletion when API service is available
-      this.snackBar.open('Account deletion will be implemented when API service is available', 'Close', {
-        duration: 3000
+      this.accountService.deleteAccount(account.id!).subscribe({
+        next: () => {
+          this.snackBar.open(`Account "${account.name}" deleted successfully!`, 'Close', {
+            duration: 3000
+          });
+          this.loadAccounts();
+        },
+        error: (error: ApiError) => {
+          console.error('Failed to delete account:', error);
+          this.snackBar.open(`Failed to delete account: ${error.message}`, 'Close', {
+            duration: 5000
+          });
+        }
       });
     }
   }
@@ -157,9 +169,23 @@ export class AccountManagementComponent implements OnInit {
   regenerateToken(account: Account, tokenType: 'access' | 'publicRead') {
     const tokenName = tokenType === 'access' ? 'access token' : 'public read token';
     if (confirm(`Are you sure you want to regenerate the ${tokenName} for "${account.name}"? This will invalidate the current token.`)) {
-      // TODO: Implement token regeneration when API service is available
-      this.snackBar.open(`${tokenName} regeneration will be implemented when API service is available`, 'Close', {
-        duration: 3000
+      const regenerateObservable = tokenType === 'access'
+        ? this.accountService.regenerateAccessToken(account.id!)
+        : this.accountService.regeneratePublicReadToken(account.id!);
+
+      regenerateObservable.subscribe({
+        next: (updatedAccount) => {
+          this.snackBar.open(`${tokenName} regenerated successfully for "${account.name}"!`, 'Close', {
+            duration: 3000
+          });
+          this.loadAccounts();
+        },
+        error: (error: ApiError) => {
+          console.error(`Failed to regenerate ${tokenName}:`, error);
+          this.snackBar.open(`Failed to regenerate ${tokenName}: ${error.message}`, 'Close', {
+            duration: 5000
+          });
+        }
       });
     }
   }

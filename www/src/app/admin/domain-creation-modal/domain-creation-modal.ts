@@ -5,6 +5,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { CommonModule } from '@angular/common';
 import { AdminDomainCreator, Account } from '../../models/permalink.model';
@@ -19,6 +20,7 @@ import { AdminDomainCreator, Account } from '../../models/permalink.model';
     MatInputModule,
     MatSelectModule,
     MatButtonModule,
+    MatCheckboxModule,
     MatProgressSpinnerModule
   ],
   templateUrl: './domain-creation-modal.html',
@@ -50,7 +52,8 @@ export class DomainCreationModalComponent implements OnInit {
   onSubmit() {
     if (this.domainForm.valid) {
       const formValue = this.domainForm.value;
-      
+      console.log(formValue.targetOwnerId);
+
       // Clean up empty values
       const domainData: AdminDomainCreator = {
         host: formValue.host,
@@ -58,6 +61,7 @@ export class DomainCreationModalComponent implements OnInit {
         landingBaseUrl: formValue.landingBaseUrl || '',
         targetOwnerId: formValue.targetOwnerId || undefined
       };
+      console.log(domainData);
 
       this.dialogRef.close(domainData);
     }

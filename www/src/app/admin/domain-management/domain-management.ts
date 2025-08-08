@@ -71,7 +71,7 @@ export class DomainManagementComponent implements OnInit {
 
   private loadDomains() {
     this.loading = true;
-    this.domainService.getAllDomains().subscribe({
+    this.domainService.getAllDomainsAdmin().subscribe({
       next: (domains) => {
         this.domains = domains;
         this.loading = false;
@@ -115,6 +115,7 @@ export class DomainManagementComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
+        console.log('The dialog was closed', result);
         this.createDomain(result);
       }
     });
@@ -139,7 +140,7 @@ export class DomainManagementComponent implements OnInit {
   deleteDomain(domain: Domain) {
     if (confirm(`Are you sure you want to delete domain ${domain.host}?`)) {
       if (!domain.id) return;
-      
+
       this.domainService.deleteAdminDomain(domain.id).subscribe({
         next: () => {
           this.snackBar.open('Domain deleted successfully', 'Close', {
