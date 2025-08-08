@@ -3,14 +3,14 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
-import { 
-  Permalink, 
-  PermalinkCreator, 
-  PageRequest, 
+import {
+  Permalink,
+  PermalinkCreator,
+  PageRequest,
   PageResponse,
   SortDirection,
   SortProperty,
-  ApiError 
+  ApiError
 } from '../models/permalink.model';
 
 @Injectable({
@@ -25,7 +25,7 @@ export class PermalinkService {
    */
   getAllPermalinks(domainId: string): Observable<Permalink[]> {
     const params = new HttpParams().set('domainId', domainId);
-    
+
     return this.http.get<Permalink[]>(`${this.baseUrl}/sync`, { params })
       .pipe(
         catchError(this.handleError)
@@ -35,9 +35,9 @@ export class PermalinkService {
   /**
    * Get paginated permalinks for a domain
    */
-  getPermalinksPage(domainId: string, pageRequest: Partial<PageRequest> = {}): Observable<PageResponse<Permalink>> {
+  getPermalinksPage(domainId: string | null, pageRequest: Partial<PageRequest> = {}): Observable<PageResponse<Permalink>> {
     const params = this.buildPageParams(domainId, pageRequest);
-    
+
     return this.http.get<PageResponse<Permalink>>(this.baseUrl, { params })
       .pipe(
         catchError(this.handleError)
@@ -49,7 +49,7 @@ export class PermalinkService {
    */
   checkSlugAvailability(slug: string, domainId: string): Observable<void> {
     const params = new HttpParams().set('domainId', domainId);
-    
+
     return this.http.get<void>(`${this.baseUrl}/slug/${encodeURIComponent(slug)}`, { params })
       .pipe(
         catchError(this.handleError)
@@ -91,7 +91,7 @@ export class PermalinkService {
    */
   deletePermalinkBySlug(slug: string, domainId: string): Observable<void> {
     const params = new HttpParams().set('domainId', domainId);
-    
+
     return this.http.delete<void>(`${this.baseUrl}/slug/${encodeURIComponent(slug)}`, { params })
       .pipe(
         catchError(this.handleError)
@@ -101,9 +101,11 @@ export class PermalinkService {
   /**
    * Build HTTP parameters for paginated requests
    */
-  private buildPageParams(domainId: string, pageRequest: Partial<PageRequest>): HttpParams {
-    let params = new HttpParams().set('domainId', domainId);
-
+  private buildPageParams(domainId: string | null, pageRequest: Partial<PageRequest>): HttpParams {
+    let params = new HttpParams()
+    if (domainId) {
+      params = params.set('domainId', domainId);
+    }
     if (pageRequest.limit !== undefined) {
       params = params.set('limit', pageRequest.limit);
     }

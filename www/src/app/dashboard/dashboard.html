@@ -7,7 +7,7 @@
           <mat-icon class="brand-icon">link</mat-icon>
           <span class="brand-text">{{ title() }}</span>
         </div>
-        
+
         <nav class="main-nav">
           <button mat-button class="nav-button">
             <mat-icon>dashboard</mat-icon>
@@ -29,7 +29,7 @@
             </button>
           </mat-menu>
         </nav>
-        
+
         <div class="user-actions">
           <button mat-icon-button [matMenuTriggerFor]="userMenu">
             <mat-icon>account_circle</mat-icon>
@@ -95,7 +95,6 @@
           <mat-form-field appearance="outline" class="domain-filter">
             <mat-label>Filter by domain</mat-label>
             <mat-select [formControl]="domainFilterControl">
-              <mat-option value="all">All domains</mat-option>
               @for (domain of domains; track domain.id) {
                 <mat-option [value]="domain.id">{{ domain.host }}</mat-option>
               }
@@ -103,11 +102,18 @@
           </mat-form-field>
 
           <div class="results-info">
-            @if (loadingPermalinks) {
+            @if (loadingPermalinks && !!selectedDomainId) {
               <span class="loading-text">Loading...</span>
+            } @else if (!selectedDomainId) {
+              Select a domain
             } @else {
               <span class="results-count">
-                {{ filteredPermalinks.length }} of {{ permalinks.length }} permalinks
+                {{ totalPermalinks }} permalinks
+                @if (selectedDomainId) {
+                  for {{ getDomainName(selectedDomainId) }}
+                } @else if (domains.length > 0) {
+                  for {{ domains[0].host }}
+                }
               </span>
             }
           </div>
@@ -115,12 +121,26 @@
 
         <!-- Table -->
         <div class="table-container">
-          @if (loadingPermalinks) {
+          @if (loadingPermalinks && selectedDomainId) {
             <div class="loading-state">
               <mat-spinner diameter="40"></mat-spinner>
               <p>Loading permalinks...</p>
             </div>
-          } @else if (filteredPermalinks.length === 0 && permalinks.length === 0) {
+          } @else if (!selectedDomainId) {
+            <div class="loading-state">
+              <p>Select a domain in the dropdown</p>
+              <br/>
+
+              <mat-form-field appearance="outline" class="domain-filter">
+                <mat-label>Select domain</mat-label>
+                <mat-select (selectionChange)="onDomainChange($event.value)">
+                  @for (domain of domains; track domain.id) {
+                    <mat-option [value]="domain.id">{{ domain.host }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+            </div>
+          } @else if (displayedPermalinks.length === 0 && totalPermalinks === 0) {
             <div class="empty-state">
               <mat-icon>link_off</mat-icon>
               <h3>No permalinks found</h3>
@@ -130,14 +150,14 @@
                 Create Permalink
               </button>
             </div>
-          } @else if (filteredPermalinks.length === 0) {
+          } @else if (displayedPermalinks.length === 0) {
             <div class="empty-state">
               <mat-icon>search_off</mat-icon>
               <h3>No matches found</h3>
               <p>Try adjusting your search criteria or filters.</p>
             </div>
           } @else {
-            <table mat-table [dataSource]="filteredPermalinks" class="permalinks-table">
+            <table mat-table [dataSource]="displayedPermalinks" class="permalinks-table">
               <!-- Shortened URL Column -->
               <ng-container matColumnDef="shortenedUrl">
                 <th mat-header-cell *matHeaderCellDef>Short URL</th>
@@ -146,7 +166,7 @@
                     <a [href]="permalink.shortenedUrl" target="_blank" class="short-url-link">
                       {{ permalink.shortenedUrl }}
                     </a>
-                    <button mat-icon-button (click)="copyToClipboard(permalink.shortenedUrl)" 
+                    <button mat-icon-button (click)="copyToClipboard(permalink.shortenedUrl)"
                             matTooltip="Copy to clipboard" class="copy-button">
                       <mat-icon>content_copy</mat-icon>
                     </button>
@@ -162,19 +182,11 @@
                     <span class="target-url" [matTooltip]="permalink.targetUrl">
                       {{ permalink.targetUrl.length > 50 ? (permalink.targetUrl | slice:0:50) + '...' : permalink.targetUrl }}
                     </span>
-                    <button mat-icon-button (click)="openUrl(permalink.targetUrl)" 
+                    <button mat-icon-button (click)="openUrl(permalink.targetUrl)"
                             matTooltip="Open target URL" class="open-button">
                       <mat-icon>open_in_new</mat-icon>
                     </button>
                   </div>
-                </td>
-              </ng-container>
-
-              <!-- Domain Column -->
-              <ng-container matColumnDef="domain">
-                <th mat-header-cell *matHeaderCellDef>Domain</th>
-                <td mat-cell *matCellDef="let permalink">
-                  <span class="domain-name">{{ permalink.domainHost }}</span>
                 </td>
               </ng-container>
 
@@ -239,6 +251,19 @@
               <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
               <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
             </table>
+
+            <!-- Pagination -->
+            @if (totalPermalinks > 0) {
+              <mat-paginator
+                [length]="totalPermalinks"
+                [pageSize]="pageSize"
+                [pageSizeOptions]="pageSizeOptions"
+                [pageIndex]="currentPage"
+                (page)="onPageChange($event)"
+                showFirstLastButtons
+                class="permalinks-paginator">
+              </mat-paginator>
+            }
           }
         </div>
       </div>

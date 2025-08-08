@@ -15,8 +15,9 @@ import java.util.Optional;
 public interface PermalinkRepository extends CrudRepository<PermalinkDb, String>, PagingAndSortingRepository<PermalinkDb, String> {
     Optional<PermalinkDb> findFirstByHostAndSlug(String host, String slug);
     List<PermalinkDb> findAllByHostOrderByLastUpdateDateTimeDesc(String host);
+    Page<PermalinkDb> findAllByHostOrderByLastUpdateDateTimeDesc(String host, Pageable pageable);
     List<PermalinkDb> deleteAllByOptionExpiryDateIsBefore(LocalDate date);
     void deleteAllByHostAndSlug(String host, String slug);
 
-    Page<PermalinkDb> findAllBySearchStringLikeIgnoreCase(String searchString, Pageable pageable);
+    Page<PermalinkDb> findAllByHostAndSearchStringLikeIgnoreCase(String host, String searchString, Pageable pageable);
 }

@@ -8,10 +8,12 @@ import { BehaviorSubject, Observable } from 'rxjs';
 export class AuthService {
   private router = inject(Router);
   private readonly TOKEN_KEY = 'links_access_token';
-  
+  private readonly ADMIN_KEY = 'links_admin';
+  private readonly FAV_DOMAIN_KEY = 'links_fav_domain';
   // Observable to track authentication state
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(this.hasToken());
   public isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
+
 
   /**
    * Check if user has a stored token
@@ -19,6 +21,10 @@ export class AuthService {
   hasToken(): boolean {
     const token = this.getToken();
     return !!token && token.length > 0;
+  }
+
+  isAdmin(): boolean {
+    return this.getAdmin() === true;
   }
 
   /**
@@ -34,15 +40,47 @@ export class AuthService {
   }
 
   /**
+   * Get the stored access token
+   */
+  getAdmin(): boolean | null {
+    try {
+      return localStorage.getItem(this.ADMIN_KEY) === 'true';
+    } catch (error) {
+      console.warn('Failed to access localStorage:', error);
+      return null;
+    }
+  }
+
+  /**
    * Store the access token
    */
-  setToken(token: string): void {
+  setToken(token: string, admin: boolean): void {
     try {
       localStorage.setItem(this.TOKEN_KEY, token);
+      localStorage.setItem(this.ADMIN_KEY, admin.toString());
       this.isAuthenticatedSubject.next(true);
     } catch (error) {
       console.error('Failed to store token in localStorage:', error);
       throw error;
+    }
+  }
+
+  setFavoriteDomain(domainId: string): void {
+    try {
+      localStorage.setItem(this.FAV_DOMAIN_KEY, domainId);
+      this.isAuthenticatedSubject.next(true);
+    } catch (error) {
+      console.error('Failed to store token in localStorage:', error);
+      throw error;
+    }
+  }
+
+  getFavoriteDomain(): string | null {
+    try {
+      return localStorage.getItem(this.FAV_DOMAIN_KEY);
+    } catch (error) {
+      console.warn('Failed to access localStorage:', error);
+      return null;
     }
   }
 
@@ -83,7 +121,7 @@ export class AuthService {
     if (!token || token.length < 10) {
       return false;
     }
-    
+
     // Basic JWT format check (has 3 parts separated by dots)
     const parts = token.split('.');
     if (parts.length === 3) {
@@ -100,7 +138,7 @@ export class AuthService {
   initializeAuth(): void {
     const hasValidToken = this.hasToken();
     this.isAuthenticatedSubject.next(hasValidToken);
-    
+
     if (!hasValidToken) {
       this.redirectToSignIn();
     }

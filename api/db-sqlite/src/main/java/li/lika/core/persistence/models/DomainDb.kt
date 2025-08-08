@@ -8,7 +8,7 @@ import li.lika.common.models.Domain
 
 @Entity
 @Table(name = "domains", indexes = [
-    Index(name="owner", columnList = "ownerId", unique = true),
+    Index(name="owner", columnList = "ownerId", unique = false),
     Index(name="host", columnList = "host", unique = true),
 ])
 class DomainDb() {

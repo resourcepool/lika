@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../services/auth';
 import { CommonModule } from '@angular/common';
+import {AccountService} from '../services/account';
 
 @Component({
   selector: 'app-signin',
@@ -27,6 +28,7 @@ export class SigninComponent {
   private fb = inject(FormBuilder);
   private authService = inject(AuthService);
   private snackBar = inject(MatSnackBar);
+  private accountService = inject(AccountService);
 
   signinForm: FormGroup;
   hideToken = true;
@@ -38,10 +40,10 @@ export class SigninComponent {
     });
   }
 
-  onSubmit() {
+  async onSubmit() {
     if (this.signinForm.valid) {
       const token = this.signinForm.get('accessToken')?.value;
-      
+
       if (!this.authService.isValidTokenFormat(token)) {
         this.snackBar.open('Invalid token format. Please check your access token.', 'Close', {
           duration: 5000
@@ -49,10 +51,18 @@ export class SigninComponent {
         return;
       }
 
+      let isAdmin = false;
+      try {
+         await this.accountService.getAllAccounts();
+         isAdmin = true;
+      } catch (error) {
+
+      }
+
       this.isLoading = true;
 
       try {
-        this.authService.setToken(token);
+        this.authService.setToken(token, isAdmin);
         this.snackBar.open('Successfully authenticated!', 'Close', {
           duration: 3000
         });

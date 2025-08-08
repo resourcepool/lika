@@ -47,10 +47,10 @@ class PermalinkDaoH2Impl(private val repository: PermalinkRepository) : Permalin
     override fun findPageForHost(host: String, req: PageRequest): PageResponse<Permalink> {
         val pageRequest = SpringPageRequest.of(req.offset / req.limit, req.limit, req.sort!!.toSpringSort());
         if (req.filter.isNullOrBlank()) {
-            val results = repository.findAll(pageRequest)
+            val results = repository.findAllByHostOrderByLastUpdateDateTimeDesc(host, pageRequest)
             return results.toPageResponse(req, PermalinkDb::toDomain)
         } else {
-            val results = repository.findAllBySearchStringLikeIgnoreCase("%" + req.filter + "%", pageRequest)
+            val results = repository.findAllByHostAndSearchStringLikeIgnoreCase(host, "%" + req.filter + "%", pageRequest)
             return results.toPageResponse(req, PermalinkDb::toDomain)
         }
     }

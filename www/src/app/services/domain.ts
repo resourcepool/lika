@@ -16,7 +16,10 @@ export class DomainService {
   /**
    * Get all domains for the current user
    */
-  getAllDomains(): Observable<Domain[]> {
+  getAllDomains(isAdmin = false): Observable<Domain[]> {
+    if (isAdmin) {
+      return this.getAllDomainsAdmin();
+    }
     return this.http.get<Domain[]>(this.baseUrl)
       .pipe(
         catchError(this.handleError)
@@ -48,8 +51,6 @@ export class DomainService {
    */
   createDomain(domain: DomainCreator, ownerId?: string, global?: boolean): Observable<Domain> {
     let params = new HttpParams();
-    console.log(domain);
-    console.log(ownerId);
     if (ownerId) {
       params = params.set('ownerId', ownerId);
     }
@@ -66,7 +67,6 @@ export class DomainService {
    * Admin: Create a new domain with admin creator
    */
   createAdminDomain(domain: AdminDomainCreator): Observable<Domain> {
-    console.log(domain);
     return this.createDomain({
       host: domain.host,
       apiBaseUrl: domain.apiBaseUrl,

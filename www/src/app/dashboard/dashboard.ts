@@ -13,13 +13,14 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CommonModule } from '@angular/common';
-import { debounceTime, distinctUntilChanged, startWith, combineLatest } from 'rxjs';
+import {debounceTime, distinctUntilChanged, startWith, combineLatest, map} from 'rxjs';
 import { PermalinkModal } from '../permalink-modal/permalink-modal';
 import { Footer } from '../footer/footer';
-import { Domain, Permalink, PermalinkCreator, ApiError } from '../models/permalink.model';
+import { Domain, Permalink, PermalinkCreator, ApiError, PageRequest, PageResponse, SortDirection, SortProperty } from '../models/permalink.model';
 import { MatDivider } from '@angular/material/divider';
 import { DomainService } from '../services/domain';
 import { PermalinkService } from '../services/permalink';
@@ -44,6 +45,7 @@ import { AuthService } from '../services/auth';
     MatChipsModule,
     MatTooltipModule,
     MatProgressSpinnerModule,
+    MatPaginatorModule,
     Footer,
     MatDivider
   ],
@@ -60,31 +62,45 @@ export class DashboardComponent implements OnInit {
 
   // Data properties
   protected domains: Domain[] = [];
-  protected permalinks: Permalink[] = [];
-  protected filteredPermalinks: Permalink[] = [];
+  protected displayedPermalinks: Permalink[] = []; // Current page permalinks from server
   protected loading = false;
   protected loadingPermalinks = false;
+  protected totalPermalinks = 0;
+  protected isAdmin = false;
+
+  // Pagination properties
+  protected pageSize = 5;
+  protected pageSizeOptions = [5, 10, 20, 50];
+  protected currentPage = 0;
+
+  // Current domain being viewed (for multi-domain pagination)
+  protected selectedDomainId: string | null = null;
 
   // Filter controls
   protected searchControl = new FormControl('');
-  protected domainFilterControl = new FormControl('all');
+  protected domainFilterControl = new FormControl<string | null>(null);
 
   // Table configuration
-  protected displayedColumns: string[] = ['shortenedUrl', 'targetUrl', 'domain', 'status', 'createdAt', 'actions'];
+  protected displayedColumns: string[] = ['shortenedUrl', 'targetUrl', 'status', 'createdAt', 'actions'];
 
   ngOnInit() {
+    this.isAdmin = this.authService.isAdmin();
+    this.selectedDomainId = this.authService.getFavoriteDomain();
+    if (this.selectedDomainId) {
+      this.domainFilterControl.setValue(this.selectedDomainId);
+    }
     this.loadDomains();
     this.setupFilters();
   }
 
   private loadDomains() {
     this.loading = true;
-    this.domainService.getAllDomains().subscribe({
+    this.domainService.getAllDomains(this.isAdmin).subscribe({
       next: (domains) => {
         this.domains = domains;
         this.loading = false;
-        // Load permalinks for all domains
-        this.loadAllPermalinks();
+        // Load permalinks with pagination
+        this.loadPermalinks();
       },
       error: (error: ApiError) => {
         console.error('Failed to load domains:', error);
@@ -97,48 +113,60 @@ export class DashboardComponent implements OnInit {
           { id: '1', host: 'short.ly', standard: false, apiBaseUrl: '', landingBaseUrl: '' },
           { id: '2', host: 'link.co', standard: false, apiBaseUrl: '', landingBaseUrl: '' }
         ];
-        this.loadAllPermalinks();
+        this.loadPermalinks();
       }
     });
   }
 
-  private loadAllPermalinks() {
+  private loadPermalinks() {
     if (this.domains.length === 0) return;
 
     this.loadingPermalinks = true;
-    this.permalinks = [];
+    this.displayedPermalinks = [];
 
-    // Load permalinks from all domains and combine them
-    const domainRequests = this.domains.map(domain =>
-      this.permalinkService.getAllPermalinks(domain.id!)
+    // Build page request
+    const searchTerm = (this.searchControl.value || '').toLowerCase().trim();
+    const pageRequest = this.permalinkService.createPageRequest(
+      this.pageSize,
+      this.currentPage * this.pageSize,
+      searchTerm || undefined,
+      SortProperty.CREATION_DATE,
+      SortDirection.DESC
     );
 
-    // Subscribe to all domain requests
-    domainRequests.forEach((request, index) => {
-      request.subscribe({
-        next: (domainPermalinks) => {
-          // Add domain info to each permalink
-          const enrichedPermalinks = domainPermalinks.map(p => ({
-            ...p,
-            domainHost: this.domains[index].host,
-            domainId: this.domains[index].id,
-            createdAt: p.createdDateTime || p.createdAt, // Ensure createdAt is available
-            options: p.options || {} // Ensure options object exists
-          }));
+    if (this.selectedDomainId) {
+      // Load from specific domain
+      this.loadFromSingleDomain(this.selectedDomainId, pageRequest);
+    } else {
 
-          this.permalinks = [...this.permalinks, ...enrichedPermalinks];
-          this.applyFilters();
-        },
-        error: (error: ApiError) => {
-          console.error(`Failed to load permalinks for domain ${this.domains[index].host}:`, error);
-        },
-        complete: () => {
-          // Check if all requests are done
-          if (index === domainRequests.length - 1) {
-            this.loadingPermalinks = false;
-          }
-        }
-      });
+    }
+  }
+
+  private loadFromSingleDomain(domainId: string | null, pageRequest: PageRequest) {
+    this.permalinkService.getPermalinksPage(domainId, pageRequest).subscribe({
+      next: (response: PageResponse<Permalink>) => {
+        // Find domain info for enriching permalinks
+        const domain = this.domains.find(d => d.id === domainId);
+
+        // Add domain info to each permalink
+        this.displayedPermalinks = response.items.map(p => ({
+          ...p,
+          domainHost: domain?.host || 'Unknown',
+          domainId: domain?.id || 'Unknown',
+          createdAt: p.createdDateTime || p.createdAt,
+          options: p.options || {}
+        }));
+
+        this.totalPermalinks = response.totalItemCount;
+        this.loadingPermalinks = false;
+      },
+      error: (error: ApiError) => {
+        console.error(`Failed to load permalinks for domain ${domainId}:`, error);
+        this.snackBar.open(`Failed to load permalinks: ${error.message}`, 'Close', {
+          duration: 5000
+        });
+        this.loadingPermalinks = false;
+      }
     });
   }
 
@@ -147,38 +175,33 @@ export class DashboardComponent implements OnInit {
     combineLatest([
       this.searchControl.valueChanges.pipe(
         startWith(''),
+        map(value => value?.toLowerCase().trim() || ''),
         debounceTime(300),
         distinctUntilChanged()
       ),
-      this.domainFilterControl.valueChanges.pipe(
-        startWith('all')
-      )
+      this.domainFilterControl.valueChanges
     ]).subscribe(() => {
       this.applyFilters();
+      this.resetPagination();
     });
+
   }
 
   private applyFilters() {
-    let filtered = [...this.permalinks];
-    const searchTerm = (this.searchControl.value || '').toLowerCase().trim();
+    // Handle domain selection
     const selectedDomain = this.domainFilterControl.value;
 
-    // Apply search filter
-    if (searchTerm) {
-      filtered = filtered.filter(permalink =>
-        permalink.shortenedUrl.toLowerCase().includes(searchTerm) ||
-        permalink.targetUrl.toLowerCase().includes(searchTerm) ||
-        (permalink.slug && permalink.slug.toLowerCase().includes(searchTerm)) ||
-        (permalink.domainHost && permalink.domainHost.toLowerCase().includes(searchTerm))
-      );
+    if (selectedDomain) {
+      this.selectedDomainId = selectedDomain;
+      this.authService.setFavoriteDomain(selectedDomain);
+    } else {
+      // For 'all' domains, we'll use the first domain for now
+      // In a real implementation, you might want to load from all domains
+      this.selectedDomainId = null;
     }
 
-    // Apply domain filter
-    if (selectedDomain && selectedDomain !== 'all') {
-      filtered = filtered.filter(permalink => permalink.domainId === selectedDomain);
-    }
-
-    this.filteredPermalinks = filtered;
+    // Load permalinks with new filters
+    this.loadPermalinks();
   }
 
   openCreatePermalinkModal() {
@@ -209,7 +232,7 @@ export class DashboardComponent implements OnInit {
         });
         console.log('Permalink created:', permalink);
         // Refresh the permalink list
-        this.loadAllPermalinks();
+        this.loadPermalinks();
       },
       error: (error: ApiError) => {
         this.snackBar.open(`Failed to create permalink: ${error.message}`, 'Close', {
@@ -255,7 +278,7 @@ export class DashboardComponent implements OnInit {
           this.snackBar.open('Permalink deleted successfully', 'Close', {
             duration: 3000
           });
-          this.loadAllPermalinks();
+          this.loadPermalinks();
         },
         error: (error: ApiError) => {
           this.snackBar.open(`Failed to delete permalink: ${error.message}`, 'Close', {
@@ -273,13 +296,13 @@ export class DashboardComponent implements OnInit {
   }
 
   refreshData() {
-    this.loadAllPermalinks();
+    this.resetPagination();
   }
 
   // Options utility methods
   getPermalinkStatus(permalink: Permalink): { status: string; color: string; icon: string } {
     const now = new Date();
-    
+
     // Check if it has activation options
     if (permalink.options?.activation?.activationInstant) {
       const activationDate = new Date(permalink.options.activation.activationInstant);
@@ -287,7 +310,7 @@ export class DashboardComponent implements OnInit {
         return { status: 'Scheduled', color: 'warn', icon: 'schedule' };
       }
     }
-    
+
     // Check if it's expired
     if (permalink.options?.expiry?.expiryDate) {
       const expiryDate = new Date(permalink.options.expiry.expiryDate);
@@ -295,7 +318,7 @@ export class DashboardComponent implements OnInit {
         return { status: 'Expired', color: 'warn', icon: 'expired' };
       }
     }
-    
+
     return { status: 'Active', color: 'primary', icon: 'check_circle' };
   }
 
@@ -305,25 +328,46 @@ export class DashboardComponent implements OnInit {
 
   getOptionsTooltip(permalink: Permalink): string {
     const options: string[] = [];
-    
+
     if (permalink.options?.activation?.activationInstant) {
       const date = new Date(permalink.options.activation.activationInstant);
       options.push(`Activates: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`);
     }
-    
+
     if (permalink.options?.activation?.targetUrlBeforeActivation) {
       options.push(`Before activation: ${permalink.options.activation.targetUrlBeforeActivation}`);
     }
-    
+
     if (permalink.options?.expiry?.expiryDate) {
       const date = new Date(permalink.options.expiry.expiryDate);
       options.push(`Expires: ${date.toLocaleDateString()}`);
     }
-    
+
     if (permalink.options?.landing?.templateId) {
       options.push(`Landing template: ${permalink.options.landing.templateId}`);
     }
-    
+
     return options.length > 0 ? options.join('\n') : 'No special options';
+  }
+
+  // Pagination methods
+  onPageChange(event: PageEvent) {
+    this.currentPage = event.pageIndex;
+    this.pageSize = event.pageSize;
+    this.loadPermalinks(); // Load new page from server
+  }
+
+  resetPagination() {
+    this.currentPage = 0;
+    this.loadPermalinks();
+  }
+
+  // Helper method to get domain name by ID
+  getDomainName(domainId: string): string {
+    return this.domains.find(d => d.id === domainId)?.host || 'Unknown';
+  }
+
+  onDomainChange(selected: string) {
+    this.domainFilterControl.setValue(selected);
   }
 }
