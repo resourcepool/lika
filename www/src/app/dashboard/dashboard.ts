@@ -143,7 +143,7 @@ export class DashboardComponent implements OnInit {
   }
 
   private loadFromSingleDomain(domainId: string | null, pageRequest: PageRequest) {
-    this.permalinkService.getPermalinksPage(domainId, pageRequest).subscribe({
+    this.permalinkService.getPermalinksPage(domainId, pageRequest, this.isAdmin).subscribe({
       next: (response: PageResponse<Permalink>) => {
         // Find domain info for enriching permalinks
         const domain = this.domains.find(d => d.id === domainId);
@@ -225,7 +225,7 @@ export class DashboardComponent implements OnInit {
   }
 
   private createPermalink(permalinkData: PermalinkCreator) {
-    this.permalinkService.createPermalink(permalinkData).subscribe({
+    this.permalinkService.createPermalink(permalinkData, this.isAdmin).subscribe({
       next: (permalink) => {
         this.snackBar.open(`Permalink created successfully: ${permalink.shortenedUrl}`, 'Close', {
           duration: 5000
@@ -273,7 +273,7 @@ export class DashboardComponent implements OnInit {
 
   deletePermalink(permalink: Permalink) {
     if (confirm(`Are you sure you want to delete ${permalink.shortenedUrl}?`)) {
-      this.permalinkService.deletePermalinkById(permalink.id).subscribe({
+      this.permalinkService.deletePermalinkById(permalink.id, this.isAdmin).subscribe({
         next: () => {
           this.snackBar.open('Permalink deleted successfully', 'Close', {
             duration: 3000

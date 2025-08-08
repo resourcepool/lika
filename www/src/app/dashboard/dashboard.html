@@ -13,6 +13,7 @@
             <mat-icon>dashboard</mat-icon>
             <span>Dashboard</span>
           </button>
+          @if (isAdmin) {
           <button mat-button class="nav-button" [matMenuTriggerFor]="adminMenu">
             <mat-icon>admin_panel_settings</mat-icon>
             <span>Admin</span>
@@ -28,6 +29,7 @@
               <span>Manage Accounts</span>
             </button>
           </mat-menu>
+          }
         </nav>
 
         <div class="user-actions">
@@ -66,10 +68,12 @@
             <mat-icon>add</mat-icon>
             Create Permalink
           </button>
+          @if (isAdmin) {
           <button mat-stroked-button class="secondary-button" (click)="openManageDomainsModal()">
             <mat-icon>domain</mat-icon>
             Manage Domains
           </button>
+          }
         </div>
       </div>
     </section>

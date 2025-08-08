@@ -44,16 +44,16 @@ class PermalinkService(
         cleanExpiredDaily()
         props.defaultLinks?.forEach { l ->
             val domain = domainDao.findStandardByHost(props.domains!![l.domainIndex].host)!!
-            transactionHandler.runInTransaction { save(PermalinkCreator(slug = l.slug, targetUrl = l.targetUrl, domainId = domain.id!!, ), token) }
+            transactionHandler.runInTransaction { save(PermalinkCreator(slug = l.slug, targetUrl = l.targetUrl, domainId = domain.id!!, ), token.getId()) }
         }
     }
 
     @Transactional
     @CacheEvict("permalinks", allEntries = true)
-    fun save(l: PermalinkCreator, owner: AccessTokenAuthentication): Permalink {
+    fun save(l: PermalinkCreator, ownerId: String): Permalink {
         var id = l.id
         val domain: Domain =
-            domainDao.findByDomainIdAndOwnerId(l.domainId, owner.getId()) ?: throw InvalidHostException()
+            domainDao.findByDomainIdAndOwnerId(l.domainId, ownerId) ?: throw InvalidHostException()
         if (domain.landingBaseUrl == null && l.type == PermalinkType.WITH_LANDING) {
             throw DomainLandingUnsupportedException()
         }
@@ -73,7 +73,7 @@ class PermalinkService(
         val pl = Permalink(
             id,
             domain.host,
-            owner.getId(),
+            ownerId,
             l.slug,
             shortenedLink,
             l.targetUrl,
@@ -114,6 +114,12 @@ class PermalinkService(
     }
 
     @Transactional
+    fun getAll(domainId: String): List<Permalink> {
+        val domain = domainDao.findOne(domainId) ?: throw InvalidDomainException()
+        return permalinkDao.findAllForHost(domain.host)
+    }
+
+    @Transactional
     fun getAll(ownerId: String, domainId: String): List<Permalink> {
         val domain = domainDao.findByDomainIdAndOwnerId(domainId, ownerId) ?: throw InvalidDomainException()
         return permalinkDao.findAllForHost(domain.host)
@@ -122,6 +128,12 @@ class PermalinkService(
     @Transactional
     fun getPage(ownerId: String, domainId: String, req: PageRequest): PageResponse<Permalink> {
         val domain = domainDao.findByDomainIdAndOwnerId(domainId, ownerId) ?: throw InvalidDomainException()
+        return permalinkDao.findPageForHost(domain.host, req)
+    }
+
+    @Transactional
+    fun getPageAdmin(domainId: String, req: PageRequest): PageResponse<Permalink> {
+        val domain = domainDao.findOne(domainId) ?: throw InvalidDomainException()
         return permalinkDao.findPageForHost(domain.host, req)
     }
 

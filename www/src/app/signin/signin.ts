@@ -9,6 +9,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { AuthService } from '../services/auth';
 import { CommonModule } from '@angular/common';
 import {AccountService} from '../services/account';
+import {firstValueFrom} from 'rxjs';
 
 @Component({
   selector: 'app-signin',
@@ -53,7 +54,8 @@ export class SigninComponent {
 
       let isAdmin = false;
       try {
-         await this.accountService.getAllAccounts();
+         this.authService.setToken(token, false);
+         await firstValueFrom(this.accountService.getAllAccounts());
          isAdmin = true;
       } catch (error) {
 

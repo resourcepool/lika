@@ -47,14 +47,14 @@ class ApiLinksController(private val permalinkService: PermalinkService, private
     fun create(@RequestBody pl: PermalinkCreator, @AuthenticationPrincipal p: Principal): Permalink {
         val owner = p as AccessTokenAuthentication
         assertResourceWriteAuthorized(owner, pl.domainId)
-        return permalinkService.save(pl, owner)
+        return permalinkService.save(pl, owner.getId())
     }
 
     @PutMapping
     fun edit(@RequestBody pl: PermalinkCreator, @AuthenticationPrincipal p: Principal): Permalink {
         val owner = p as AccessTokenAuthentication
         assertResourceWriteAuthorized(owner, pl.domainId)
-        return permalinkService.save(pl, owner)
+        return permalinkService.save(pl, owner.getId())
     }
 
     @DeleteMapping("/{id}")
@@ -87,7 +87,7 @@ class ApiLinksController(private val permalinkService: PermalinkService, private
     }
 }
 
-private fun PageRequest.Companion.parseParams(params: Map<String, Any>): PageRequest {
+fun PageRequest.Companion.parseParams(params: Map<String, Any>): PageRequest {
     val limit = 50.coerceAtMost(params["limit"]?.toString()?.toIntOrNull() ?: 20)
     val offset = 0.coerceAtLeast(params["offset"]?.toString()?.toIntOrNull()?:0)
     val filter = params["filter"]?.toString()

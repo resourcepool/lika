@@ -9,6 +9,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { CommonModule } from '@angular/common';
 import { PermalinkCreator, PermalinkType, Domain, OptionsDto } from '../models/permalink.model';
+import {AuthService} from '../services/auth';
 
 @Component({
   selector: 'app-permalink-modal',
@@ -30,7 +31,7 @@ export class PermalinkModal implements OnInit {
   private fb = inject(FormBuilder);
   private dialogRef = inject(MatDialogRef<PermalinkModal>);
   private data = inject<{ domains: Domain[], permalink?: PermalinkCreator }>(MAT_DIALOG_DATA);
-
+  private authService = inject(AuthService);
   permalinkForm!: FormGroup;
   domains: Domain[] = [];
   permalinkTypes = Object.values(PermalinkType);
@@ -40,6 +41,7 @@ export class PermalinkModal implements OnInit {
     this.domains = this.data?.domains || [];
     this.isEditMode = !!this.data?.permalink;
 
+
     this.initializeForm();
 
     if (this.isEditMode && this.data.permalink) {
@@ -48,14 +50,14 @@ export class PermalinkModal implements OnInit {
         ...this.data.permalink,
         options: {
           activation: {
-            activationInstant: this.data.permalink.options?.activation?.activationInstant 
+            activationInstant: this.data.permalink.options?.activation?.activationInstant
               ? this.convertISOToDatetimeLocal(this.data.permalink.options.activation.activationInstant)
               : null,
             targetUrlBeforeActivation: this.data.permalink.options?.activation?.targetUrlBeforeActivation || ''
           },
           landing: this.data.permalink.options?.landing || { templateId: '' },
           expiry: {
-            expiryDate: this.data.permalink.options?.expiry?.expiryDate 
+            expiryDate: this.data.permalink.options?.expiry?.expiryDate
               ? new Date(this.data.permalink.options.expiry.expiryDate)
               : null
           }
@@ -69,7 +71,7 @@ export class PermalinkModal implements OnInit {
     this.permalinkForm = this.fb.group({
       id: [null],
       targetUrl: ['', [Validators.required, Validators.pattern(/^https?:\/\/.+/)]],
-      domainId: ['', Validators.required],
+      domainId: [this.authService.getFavoriteDomain() || '', Validators.required],
       slug: [''],
       type: [PermalinkType.SIMPLE],
       // Options group
@@ -115,7 +117,7 @@ export class PermalinkModal implements OnInit {
           formValue.options.activation.activationInstant = null;
         }
       }
-      
+
       if (formValue.options?.expiry?.expiryDate) {
         const expiryDate = new Date(formValue.options.expiry.expiryDate);
         if (!isNaN(expiryDate.getTime())) {
@@ -135,8 +137,8 @@ export class PermalinkModal implements OnInit {
 
   private cleanupEmptyOptions(options: OptionsDto) {
     // Remove empty activation options
-    if (options.activation && 
-        (!options.activation.activationInstant || options.activation.activationInstant === null) && 
+    if (options.activation &&
+        (!options.activation.activationInstant || options.activation.activationInstant === null) &&
         (!options.activation.targetUrlBeforeActivation || options.activation.targetUrlBeforeActivation.trim() === '')) {
       delete options.activation;
     }
@@ -171,14 +173,14 @@ export class PermalinkModal implements OnInit {
     if (isNaN(date.getTime())) {
       return '';
     }
-    
+
     // Get local datetime in the format required by datetime-local input
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
-    
+
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 }

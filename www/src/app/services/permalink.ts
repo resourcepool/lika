@@ -19,14 +19,15 @@ import {
 export class PermalinkService {
   private http = inject(HttpClient);
   private readonly baseUrl = `${environment.apiBaseUrl}/api/links`;
+  private readonly baseUrlAdmin = `${environment.apiBaseUrl}/api/admin/links`;
 
   /**
    * Get all permalinks for a domain (sync endpoint)
    */
-  getAllPermalinks(domainId: string): Observable<Permalink[]> {
+  getAllPermalinks(domainId: string, admin = false): Observable<Permalink[]> {
     const params = new HttpParams().set('domainId', domainId);
 
-    return this.http.get<Permalink[]>(`${this.baseUrl}/sync`, { params })
+    return this.http.get<Permalink[]>(`${admin ? this.baseUrlAdmin : this.baseUrl}/sync`, { params })
       .pipe(
         catchError(this.handleError)
       );
@@ -35,10 +36,10 @@ export class PermalinkService {
   /**
    * Get paginated permalinks for a domain
    */
-  getPermalinksPage(domainId: string | null, pageRequest: Partial<PageRequest> = {}): Observable<PageResponse<Permalink>> {
+  getPermalinksPage(domainId: string | null, pageRequest: Partial<PageRequest> = {}, admin = false): Observable<PageResponse<Permalink>> {
     const params = this.buildPageParams(domainId, pageRequest);
 
-    return this.http.get<PageResponse<Permalink>>(this.baseUrl, { params })
+    return this.http.get<PageResponse<Permalink>>(admin ? this.baseUrlAdmin : this.baseUrl, { params })
       .pipe(
         catchError(this.handleError)
       );
@@ -59,18 +60,20 @@ export class PermalinkService {
   /**
    * Create a new permalink
    */
-  createPermalink(permalink: PermalinkCreator): Observable<Permalink> {
-    return this.http.post<Permalink>(this.baseUrl, permalink)
+  createPermalink(permalink: PermalinkCreator, admin = false): Observable<Permalink> {
+    return this.http.post<Permalink>(admin ? this.baseUrlAdmin : this.baseUrl, permalink)
       .pipe(
         catchError(this.handleError)
       );
   }
 
+
+
   /**
    * Update an existing permalink
    */
-  updatePermalink(permalink: PermalinkCreator): Observable<Permalink> {
-    return this.http.put<Permalink>(this.baseUrl, permalink)
+  updatePermalink(permalink: PermalinkCreator, admin = false): Observable<Permalink> {
+    return this.http.put<Permalink>(admin ? this.baseUrlAdmin : this.baseUrl, permalink)
       .pipe(
         catchError(this.handleError)
       );
@@ -79,8 +82,8 @@ export class PermalinkService {
   /**
    * Delete a permalink by ID
    */
-  deletePermalinkById(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/${id}`)
+  deletePermalinkById(id: string, admin = false): Observable<void> {
+    return this.http.delete<void>(`${admin ? this.baseUrlAdmin : this.baseUrl}/${id}`)
       .pipe(
         catchError(this.handleError)
       );
@@ -89,10 +92,10 @@ export class PermalinkService {
   /**
    * Delete a permalink by slug and domain
    */
-  deletePermalinkBySlug(slug: string, domainId: string): Observable<void> {
+  deletePermalinkBySlug(slug: string, domainId: string, admin = false): Observable<void> {
     const params = new HttpParams().set('domainId', domainId);
 
-    return this.http.delete<void>(`${this.baseUrl}/slug/${encodeURIComponent(slug)}`, { params })
+    return this.http.delete<void>(`${admin ? this.baseUrlAdmin : this.baseUrl}/slug/${encodeURIComponent(slug)}`, { params })
       .pipe(
         catchError(this.handleError)
       );
