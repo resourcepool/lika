@@ -18,6 +18,7 @@ class AccountService(
     private val securityProperties: SecurityProperties
 ) : AccountRegistry {
 
+    private val logger = org.slf4j.LoggerFactory.getLogger(AccountService::class.java)
 
     @CacheEvict("accounts", allEntries = true)
     fun init() {
