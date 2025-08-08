@@ -52,7 +52,6 @@ export class DomainCreationModalComponent implements OnInit {
   onSubmit() {
     if (this.domainForm.valid) {
       const formValue = this.domainForm.value;
-      console.log(formValue.targetOwnerId);
 
       // Clean up empty values
       const domainData: AdminDomainCreator = {
@@ -61,7 +60,6 @@ export class DomainCreationModalComponent implements OnInit {
         landingBaseUrl: formValue.landingBaseUrl || '',
         targetOwnerId: formValue.targetOwnerId || undefined
       };
-      console.log(domainData);
 
       this.dialogRef.close(domainData);
     }

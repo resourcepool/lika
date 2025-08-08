@@ -88,7 +88,6 @@ export class ArchiveManagementComponent {
     reader.onload = (e) => {
       try {
         const archiveData = JSON.parse(e.target?.result as string) as DatabaseArchive;
-        console.log(archiveData);
         // Validate the archive structure
         if (!this.validateArchiveStructure(archiveData)) {
           this.snackBar.open('Invalid archive file format', 'Close', {
@@ -177,22 +176,13 @@ export class ArchiveManagementComponent {
    * Validate archive structure
    */
   private validateArchiveStructure(archive: any): archive is DatabaseArchive {
-    console.log("1");
     if (!archive || typeof archive !== 'object') {
       return false;
     }
-    console.log("2");
     if (!Array.isArray(archive.accounts)) {
       return false;
     }
-    console.log("3");
-    archive.accounts.forEach((account: any) => {
-      console.log(typeof account === 'object' &&
-        typeof account.name === 'string' &&
-        typeof account.root === 'boolean' &&
-        typeof account.global === 'boolean' &&
-        Array.isArray(account.domains))
-    })
+
     // Basic validation of account structure
     return archive.accounts.every((account: any) =>
       typeof account === 'object' &&

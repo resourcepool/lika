@@ -70,7 +70,7 @@ export class DashboardComponent implements OnInit {
   protected isAdmin = false;
 
   // Pagination properties
-  protected pageSize = 5;
+  protected pageSize = 50;
   protected pageSizeOptions = [5, 10, 20, 50];
   protected currentPage = 0;
 
