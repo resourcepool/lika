@@ -20,8 +20,15 @@ class PublicLinksController(
         private val permalinkService: PermalinkService) {
 
     @GetMapping("{rootPermalink}")
-    fun getPermalink(model: ModelMap, @RequestHeader(name="Host", required = false) host: String, @PathVariable rootPermalink: String): ModelAndView {
-        val pl = permalinkService.findOneByHostAndSlug(host.trim().toLowerCase(), rootPermalink)
+    fun getPermalink(model: ModelMap,
+                     @RequestHeader(name="Host", required = false) host: String? = null,
+                     @RequestHeader(name="X-Forwarded-Host", required = false) forwardedHost: String? = null,
+                     @PathVariable rootPermalink: String): ModelAndView {
+        var host = host?.trim()?.lowercase()
+        if (forwardedHost != null) {
+            host = forwardedHost.trim().lowercase()
+        }
+        val pl = permalinkService.findOneByHostAndSlug(host, rootPermalink)
         if (pl.type == PermalinkType.SIMPLE) {
             return ModelAndView("redirect:${pl.targetUrl}", model)
         }
