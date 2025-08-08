@@ -59,7 +59,7 @@ class ApiAdminLinksController(private val accountService: AccountService, privat
         val owner = p as AccessTokenAuthentication
         assertResourceWriteAuthorized(owner, pl.domainId)
         val domain = domainService.findById(pl.domainId)?: throw InvalidDomainException()
-        return permalinkService.save(pl, domain.ownerId!!)
+        return permalinkService.save(pl, domain.ownerId?:owner.getId())
     }
 
     @PutMapping
