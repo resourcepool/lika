@@ -1,6 +1,6 @@
 import { Component, signal, inject, OnInit } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -59,6 +59,7 @@ export class DashboardComponent implements OnInit {
   private permalinkService = inject(PermalinkService);
   private snackBar = inject(MatSnackBar);
   private authService = inject(AuthService);
+  private router = inject(Router);
 
   // Data properties
   protected domains: Domain[] = [];
@@ -243,11 +244,8 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  openManageDomainsModal() {
-    // TODO: Implement domain management modal
-    this.snackBar.open('Domain management coming soon!', 'Close', {
-      duration: 3000
-    });
+  openManageDomains() {
+    this.router.navigate(['/admin/domains']);
   }
 
   logout() {

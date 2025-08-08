@@ -1,5 +1,5 @@
 import { Component, inject, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AsyncValidatorFn, AbstractControl, ValidationErrors } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -9,7 +9,10 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { CommonModule } from '@angular/common';
 import { PermalinkCreator, PermalinkType, Domain, OptionsDto } from '../models/permalink.model';
-import {AuthService} from '../services/auth';
+import { AuthService } from '../services/auth';
+import { PermalinkService } from '../services/permalink';
+import { Observable, of, timer } from 'rxjs';
+import { map, catchError, switchMap, distinctUntilChanged, debounceTime } from 'rxjs/operators';
 
 @Component({
   selector: 'app-permalink-modal',
@@ -32,10 +35,38 @@ export class PermalinkModal implements OnInit {
   private dialogRef = inject(MatDialogRef<PermalinkModal>);
   private data = inject<{ domains: Domain[], permalink?: PermalinkCreator }>(MAT_DIALOG_DATA);
   private authService = inject(AuthService);
+  private permalinkService = inject(PermalinkService);
   permalinkForm!: FormGroup;
   domains: Domain[] = [];
   permalinkTypes = Object.values(PermalinkType);
   isEditMode = false;
+
+  private slugAvailabilityValidator(): AsyncValidatorFn {
+    return (control: AbstractControl): Observable<ValidationErrors | null> => {
+      if (!control.value || control.value.trim() === '') {
+        return of(null);
+      }
+
+      const domainId = this.permalinkForm?.get('domainId')?.value;
+      if (!domainId) {
+        return of(null);
+      }
+
+      // Skip validation if in edit mode and the slug hasn't changed
+      if (this.isEditMode && this.data?.permalink?.slug === control.value) {
+        return of(null);
+      }
+
+      return timer(300).pipe(
+        switchMap(() => this.permalinkService.checkSlugAvailability(control.value, domainId)),
+        map(() => null), // Success means slug is available
+        catchError((error) => {
+          // If error occurs, slug is not available
+          return of({ slugUnavailable: true });
+        })
+      );
+    };
+  }
 
   ngOnInit() {
     this.domains = this.data?.domains || [];
@@ -72,7 +103,7 @@ export class PermalinkModal implements OnInit {
       id: [null],
       targetUrl: ['', [Validators.required, Validators.pattern(/^https?:\/\/.+/)]],
       domainId: [this.authService.getFavoriteDomain() || '', Validators.required],
-      slug: [''],
+      slug: ['', [], [this.slugAvailabilityValidator()]],
       type: [PermalinkType.SIMPLE],
       // Options group
       options: this.fb.group({
@@ -99,6 +130,14 @@ export class PermalinkModal implements OnInit {
         landingGroup?.get('templateId')?.setValue('');
       }
       landingGroup?.get('templateId')?.updateValueAndValidity();
+    });
+
+    // Watch for domain changes to re-validate slug
+    this.permalinkForm.get('domainId')?.valueChanges.subscribe(() => {
+      const slugControl = this.permalinkForm.get('slug');
+      if (slugControl?.value) {
+        slugControl.updateValueAndValidity();
+      }
     });
   }
 

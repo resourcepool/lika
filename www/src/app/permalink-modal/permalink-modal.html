@@ -51,6 +51,9 @@
       <mat-label>Custom Slug (optional)</mat-label>
       <input matInput formControlName="slug" placeholder="my-custom-slug">
       <mat-hint>Leave empty to auto-generate</mat-hint>
+      @if (permalinkForm.get('slug')?.hasError('slugUnavailable')) {
+        <mat-error>This slug is already taken</mat-error>
+      }
     </mat-form-field>
 
     <!-- Options Section -->
