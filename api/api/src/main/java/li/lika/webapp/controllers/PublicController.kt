@@ -1,6 +1,7 @@
 package li.lika.webapp.controllers
 
 import org.springframework.boot.info.BuildProperties
+import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
@@ -14,3 +15,4 @@ class PublicController(private val buildProps: BuildProperties) {
         return buildProps
     }
 }
+

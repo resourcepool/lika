@@ -31,6 +31,11 @@ class DomainDaoMongoImpl(private val template: MongoTemplate) : DomainDao {
         return template.remove(Query.query(whereIdEquals(id)), DomainDb::class.java).deletedCount == 1L
     }
 
+    override fun findByHost(host: String): Domain? {
+        val r = template.findOne(Query.query(whereHostIsEqualTo(host)), DomainDb::class.java)
+        return r?.toDomain()
+    }
+
     override fun findStandardByHost(host: String): Domain? {
         val r = template.findOne(Query.query(whereHostIsEqualTo(host).andOperator(whereOwnerIdIsNull().andOperator(whereStandardIsTrue()))), DomainDb::class.java)
         return r?.toDomain()

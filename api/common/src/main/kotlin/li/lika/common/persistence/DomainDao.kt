@@ -5,6 +5,7 @@ import li.lika.common.models.Domain
 interface DomainDao {
     fun findOne(id: String): Domain?
     fun deleteOne(id: String): Boolean
+    fun findByHost(host: String): Domain?
     fun findStandardByHost(host: String): Domain?
     fun findByHostAndOwnerId(host: String, ownerId: String): Domain?
     fun findByDomainIdAndOwnerId(domainId: String, ownerId: String): Domain?

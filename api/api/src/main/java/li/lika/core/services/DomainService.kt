@@ -49,6 +49,11 @@ class DomainService(private val domainDao: DomainDao, private val props: LikaPro
     }
 
     @Cacheable("domains")
+    fun findOneByHost(host: String): Domain? {
+        return domainDao.findByHost(host)
+    }
+
+    @Cacheable("domains")
     fun findOneByHostAndOwnerId(host: String, ownerId: String): Domain? {
         return domainDao.findByHostAndOwnerId(host, ownerId)
     }

@@ -19,23 +19,43 @@ class PublicLinksController(
         private val domainService: DomainService,
         private val permalinkService: PermalinkService) {
     private val logger = org.slf4j.LoggerFactory.getLogger(PublicLinksController::class.java)
+
     @GetMapping("{rootPermalink}")
     fun getPermalink(model: ModelMap,
                      @RequestHeader(name="Host", required = false) host: String? = null,
                      @RequestHeader(name="X-Forwarded-Host", required = false) forwardedHost: String? = null,
                      @PathVariable rootPermalink: String): ModelAndView {
-        var host = host?.trim()?.lowercase()
-        logger.debug("Host: {}", host)
-        if (forwardedHost != null) {
-            logger.debug("X-Forwarded-Host: $forwardedHost")
-            host = forwardedHost.trim().lowercase()
+
+        var host = sanitizeHost(host, forwardedHost)
+        if (rootPermalink == "index.html") {
+            logger.warn("Root permalink is blank, redirecting to home")
+            if (host != null) {
+                val domain = domainService.findOneByHost(host)
+                if (domain?.landingBaseUrl?.isNotBlank() == true) {
+                    return ModelAndView("redirect:${domain.landingBaseUrl}")
+                }
+            }
+            return ModelAndView("forward:/static/index.html")
+
+
         }
+
         val pl = permalinkService.findOneByHostAndSlug(host!!, rootPermalink)
         if (pl.type == PermalinkType.SIMPLE) {
             return ModelAndView("redirect:${pl.targetUrl}", model)
         }
         val domain = domainService.findOneByHostAndOwnerId(pl.host, pl.ownerId) ?: throw InvalidHostException()
         return ModelAndView("redirect:${domain.landingBaseUrl}?l=${pl.slug}", model)
+    }
+
+    private fun sanitizeHost(host: String?, forwardedHost: String?): String? {
+        var result = host?.trim()?.lowercase()
+        logger.debug("Host: {}", result)
+        if (forwardedHost != null) {
+            logger.debug("X-Forwarded-Host: $forwardedHost")
+            result = forwardedHost.trim().lowercase()
+        }
+        return result
     }
 
 }

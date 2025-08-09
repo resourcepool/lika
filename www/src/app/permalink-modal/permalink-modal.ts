@@ -101,7 +101,7 @@ export class PermalinkModal implements OnInit {
   private initializeForm() {
     this.permalinkForm = this.fb.group({
       id: [null],
-      targetUrl: ['', [Validators.required, Validators.pattern(/^https?:\/\/.+/)]],
+      targetUrl: ['', [Validators.required, Validators.pattern(/^.+:\/\/.+/)]],
       domainId: [this.authService.getFavoriteDomain() || '', Validators.required],
       slug: ['', [], [this.slugAvailabilityValidator()]],
       type: [PermalinkType.SIMPLE],

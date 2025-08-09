@@ -23,6 +23,11 @@ class DomainDaoH2Impl(private val repository: DomainRepository) : DomainDao {
         return true
     }
 
+    override fun findByHost(host: String): Domain? {
+        val r = repository.findFirstByHost(host);
+        return r.getOrNull()?.toDomain()
+    }
+
     override fun findStandardByHost(host: String): Domain? {
         val r = repository.findFirstByHostAndOwnerIdIsNullAndStandardIsTrue(host);
         return r.getOrNull()?.toDomain()

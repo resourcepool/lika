@@ -2,6 +2,7 @@ package li.lika.core.services
 
 import li.lika.common.exceptions.*
 import li.lika.common.models.*
+import li.lika.common.models.ProtectedLinks.isForbidden
 import li.lika.common.models.dtos.PageRequest
 import li.lika.common.models.dtos.PageResponse
 import li.lika.common.persistence.DomainDao
@@ -139,9 +140,6 @@ class PermalinkService(
 
     @Transactional
     fun deleteBySlug(host: String, slug: String) {
-        if (ProtectedLinks.isProtected(slug)) {
-            throw PermanentSlugException()
-        }
         permalinkDao.findByHostAndSlug(host, slug) ?: throw PermalinkNotFoundException()
         return permalinkDao.deleteBySlug(host, slug)
     }
@@ -174,6 +172,9 @@ class PermalinkService(
     fun assertSlugAvailable(host: String, slug: String?) {
         if (slug.isNullOrBlank()) {
             return
+        }
+        if (isForbidden(slug)) {
+            throw SlugAlreadyExistsException()
         }
         if (permalinkDao.findByHostAndSlug(host, slug) != null) {
             throw SlugAlreadyExistsException()

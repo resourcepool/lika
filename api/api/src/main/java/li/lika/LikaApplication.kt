@@ -10,10 +10,12 @@ import li.lika.core.props.LikaProperties
 import li.lika.core.props.ServerProperties
 import li.lika.security.props.SecurityProperties
 import li.lika.webapp.SecurityConfig
+import li.lika.webapp.WebConfig
 import org.slf4j.LoggerFactory
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+import org.springframework.boot.autoconfigure.web.servlet.error.ErrorMvcAutoConfiguration
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.cache.CacheManager
 import org.springframework.cache.annotation.EnableCaching
@@ -29,7 +31,7 @@ import java.text.NumberFormat
 import java.util.concurrent.TimeUnit
 
 
-@SpringBootApplication(exclude = [UserDetailsServiceAutoConfiguration::class])
+@SpringBootApplication(exclude = [ErrorMvcAutoConfiguration::class, UserDetailsServiceAutoConfiguration::class])
 @EnableScheduling
 @EnableCaching
 @ComponentScan(basePackages = ["li.lika.core.persistence", "li.lika.core.services", "li.lika.webapp.controllers"])
@@ -43,7 +45,7 @@ import java.util.concurrent.TimeUnit
     SecurityProperties::class
 )
 @Import(
-    value = [SecurityConfig::class]
+    value = [WebConfig::class, SecurityConfig::class]
 )
 class LikaApplication {
 
