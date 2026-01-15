@@ -44,12 +44,12 @@ class PublicLinksController(
         if (pl.type == DeeplinkType.SIMPLE) {
             return ModelAndView("redirect:${pl.targetUrl}", model)
         }
-        if (pl.type == DeeplinkType.PROTECTED) {
+        val domain = domainService.findOneByHostAndOwnerId(pl.host, pl.ownerId) ?: throw InvalidHostException()
+        if (pl.type == DeeplinkType.PROTECTED && domain.landingBaseUrl.isNullOrBlank()) {
             return ModelAndView("protected")
                 .addObject("l", pl.slug)
                 .addObject("accessToken", properties.defaultGlobalAccessToken)
         }
-        val domain = domainService.findOneByHostAndOwnerId(pl.host, pl.ownerId) ?: throw InvalidHostException()
         return ModelAndView("redirect:${domain.landingBaseUrl}?l=${pl.slug}", model)
     }
 
