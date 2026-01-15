@@ -4,7 +4,7 @@ import li.lika.common.exceptions.AccountNotFoundException
 import li.lika.common.models.*
 import li.lika.common.persistence.AccountDao
 import li.lika.common.persistence.DomainDao
-import li.lika.common.persistence.PermalinkDao
+import li.lika.common.persistence.DeeplinkDao
 import li.lika.core.props.LikaProperties
 import li.lika.core.services.handlers.TransactionHandler
 import li.lika.security.props.SecurityProperties
@@ -21,8 +21,8 @@ import java.util.UUID
 class ArchiveService(
     private val accountDao: AccountDao,
     private val domainDao: DomainDao,
-    private val permalinkDao: PermalinkDao,
-    private val permalinkService: PermalinkService,
+    private val deeplinkDao: DeeplinkDao,
+    private val deeplinkService: DeeplinkService,
     private val transactionHandler: TransactionHandler,
     private val securityProperties: SecurityProperties,
     private val props: LikaProperties
@@ -30,7 +30,7 @@ class ArchiveService(
     private val logger = getLogger(ArchiveService::class.java)
 
     @Transactional
-    @CacheEvict(cacheNames = ["accounts", "domains", "permalinks"], allEntries = true)
+    @CacheEvict(cacheNames = ["accounts", "domains", "deeplinks"], allEntries = true)
     fun exportArchive(): DatabaseArchive {
         val targetAccounts = ArrayList<AccountArchiveItem>()
         val archive = DatabaseArchive(targetAccounts)
@@ -40,11 +40,11 @@ class ArchiveService(
             val isRoot = acc.global && acc.name == securityProperties.defaultGlobalName
             targetAccounts.add(AccountArchiveItem.fromAccount(acc, targetDomains, isRoot))
             domains.forEach { d ->
-                val targetPermalinks = ArrayList<PermalinkArchiveItem>()
-                val permalinks = permalinkDao.findAllForHost(d.host)
+                val targetPermalinks = ArrayList<DeeplinkArchiveItem>()
+                val deeplinks = deeplinkDao.findAllForHost(d.host)
                 targetDomains.add(DomainArchiveItem.fromDomain(d, targetPermalinks))
-                permalinks.forEach { p ->
-                    targetPermalinks.add(PermalinkArchiveItem(p.targetUrl, p.slug, p.type, p.options.toDto()))
+                deeplinks.forEach { p ->
+                    targetPermalinks.add(DeeplinkArchiveItem(p.targetUrl, p.slug, p.type, p.options.toDto()))
                 }
             }
         }
@@ -59,25 +59,25 @@ class ArchiveService(
             // Import domains for each account
             acc.domains.forEach { d ->
                 val domain = importDomain(account.id!!, d)
-                // Import permalinks for each domain
+                // Import deeplinks for each domain
                 d.links.forEach { p ->
-                    val permalink = importPermalink(domain.ownerId!!, domain.id!!, domain.host, p)
-                    permalinkDao.save(permalink)
+                    val deeplink = importDeeplink(domain.ownerId!!, domain.id!!, domain.host, p)
+                    deeplinkDao.save(deeplink)
                 }
             }
         }
     }
 
-    private fun importPermalink(ownerId: String, domainId: String, host: String, item: PermalinkArchiveItem): Permalink {
+    private fun importDeeplink(ownerId: String, domainId: String, host: String, item: DeeplinkArchiveItem): Deeplink {
         return transactionHandler.runInTransaction {
-            logger.info("Importing permalink {}", item.slug)
-            var permalink: Permalink? = permalinkDao.findByHostAndSlug(host, item.slug!!)
-            if (permalink != null) {
-                logger.info("Found permalink {}: {}", permalink.slug, permalink.id)
-                return@runInTransaction permalink
+            logger.info("Importing deeplink {}", item.slug)
+            var deeplink: Deeplink? = deeplinkDao.findByHostAndSlug(host, item.slug!!)
+            if (deeplink != null) {
+                logger.info("Found deeplink {}: {}", deeplink.slug, deeplink.id)
+                return@runInTransaction deeplink
             }
-            logger.info("No matching permalink, will create one")
-            var permalinkCreator = PermalinkCreator(
+            logger.info("No matching deeplink, will create one")
+            var deeplinkCreator = DeeplinkCreator(
                 null,
                 item.targetUrl,
                 domainId,
@@ -85,7 +85,7 @@ class ArchiveService(
                 item.type,
                 item.options
             )
-            return@runInTransaction permalinkService.save(permalinkCreator, ownerId)
+            return@runInTransaction deeplinkService.save(deeplinkCreator, ownerId)
         }
     }
 
@@ -130,14 +130,14 @@ class ArchiveService(
 
 fun DomainArchiveItem.Companion.fromDomain(
     domain: Domain,
-    targetPermalinks: ArrayList<PermalinkArchiveItem>
+    targetDeeplinks: ArrayList<DeeplinkArchiveItem>
 ): DomainArchiveItem {
     return DomainArchiveItem(
         domain.standard,
         domain.host,
         domain.apiBaseUrl,
         domain.landingBaseUrl,
-        targetPermalinks
+        targetDeeplinks
     )
 }
 

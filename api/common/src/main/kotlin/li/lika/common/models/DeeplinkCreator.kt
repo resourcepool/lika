@@ -9,6 +9,10 @@ data class LandingOptionsDto(
         var templateId: String? = null
 )
 
+data class PasswordProtectedOptionsDto(
+    var password: String? = null
+)
+
 data class ExpiryOptionsDto(
         var expiryDate: String? = null
 )
@@ -16,13 +20,14 @@ data class ExpiryOptionsDto(
 data class OptionsDto(
         var activation: ActivationOptionsDto? = null,
         var landing: LandingOptionsDto? = null,
-        var expiry: ExpiryOptionsDto? = null)
+        var expiry: ExpiryOptionsDto? = null,
+        var password: PasswordProtectedOptionsDto? = null)
 
 
-data class PermalinkCreator(
-        var id: String? = null,
-        var targetUrl: String = "",
-        var domainId: String = "",
-        var slug: String? = null,
-        var type: PermalinkType = PermalinkType.SIMPLE,
-        var options: OptionsDto = OptionsDto())
+data class DeeplinkCreator(
+    var id: String? = null,
+    var targetUrl: String = "",
+    var domainId: String = "",
+    var slug: String? = null,
+    var type: DeeplinkType = DeeplinkType.SIMPLE,
+    var options: OptionsDto = OptionsDto())

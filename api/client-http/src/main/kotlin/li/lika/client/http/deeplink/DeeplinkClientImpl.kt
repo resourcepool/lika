@@ -1,10 +1,10 @@
-package li.lika.client.http.permalink
+package li.lika.client.http.deeplink
 
 import li.lika.client.http.exceptions.FrogLinkClientErrorHandler
 import li.lika.client.http.security.Authenticator
 import li.lika.client.http.security.DummyAuthenticator
-import li.lika.common.models.Permalink
-import li.lika.common.models.PermalinkCreator
+import li.lika.common.models.Deeplink
+import li.lika.common.models.DeeplinkCreator
 import org.slf4j.LoggerFactory
 import org.springframework.web.reactive.function.client.*
 import reactor.core.publisher.Flux
@@ -12,13 +12,13 @@ import reactor.core.publisher.Mono
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets.UTF_8
 
-class PermalinkClientImpl(
+class DeeplinkClientImpl(
     baseUrl: String,
     authenticator: Authenticator = DummyAuthenticator(),
     val errorHandler: FrogLinkClientErrorHandler
-) : PermalinkClient {
+) : DeeplinkClient {
 
-    private val logger = LoggerFactory.getLogger(PermalinkClientImpl::class.java)
+    private val logger = LoggerFactory.getLogger(DeeplinkClientImpl::class.java)
     private val authenticator: Authenticator
     private val webClient: WebClient
 
@@ -48,44 +48,44 @@ class PermalinkClientImpl(
         )
     }
 
-    override fun findOneByDomainIdAndSlug(domainId: String, slug: String): Mono<Permalink> {
+    override fun findOneByDomainIdAndSlug(domainId: String, slug: String): Mono<Deeplink> {
         return authenticator.wrap(
             webClient.get()
                 .uri("/api/search/slug/${slug}?domainId=${URLEncoder.encode(domainId.trim().toLowerCase(), UTF_8)}")
                 .retrieve()
-                .bodyToMono<Permalink>()
+                .bodyToMono<Deeplink>()
                 .onErrorMap(WebClientResponseException::class.java, errorHandler::parseWebClientResponseException)
         )
     }
 
-    override fun create(pl: PermalinkCreator): Mono<Permalink> {
+    override fun create(pl: DeeplinkCreator): Mono<Deeplink> {
         return authenticator.wrap(
             webClient.post()
                 .uri("/api/links")
                 .bodyValue(pl)
                 .retrieve()
-                .bodyToMono<Permalink>()
+                .bodyToMono<Deeplink>()
                 .onErrorMap(WebClientResponseException::class.java, errorHandler::parseWebClientResponseException)
         )
     }
 
-    override fun edit(pl: PermalinkCreator): Mono<Permalink> {
+    override fun edit(pl: DeeplinkCreator): Mono<Deeplink> {
         return authenticator.wrap(
             webClient.put()
                 .uri("/api/links")
                 .bodyValue(pl)
                 .retrieve()
-                .bodyToMono<Permalink>()
+                .bodyToMono<Deeplink>()
                 .onErrorMap(WebClientResponseException::class.java, errorHandler::parseWebClientResponseException)
         )
     }
 
-    override fun getAll(domainId: String): Flux<Permalink> {
+    override fun getAll(domainId: String): Flux<Deeplink> {
         return authenticator.wrap(
             webClient.get()
                 .uri("/api/links?domainId=${URLEncoder.encode(domainId.trim().lowercase(), UTF_8)}")
                 .retrieve()
-                .bodyToFlux<Permalink>()
+                .bodyToFlux<Deeplink>()
                 .onErrorMap(WebClientResponseException::class.java, errorHandler::parseWebClientResponseException)
         )
     }

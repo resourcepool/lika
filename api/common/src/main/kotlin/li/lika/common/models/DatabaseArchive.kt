@@ -1,9 +1,9 @@
 package li.lika.common.models
 
-data class PermalinkArchiveItem(
+data class DeeplinkArchiveItem(
     var targetUrl: String = "",
     var slug: String? = null,
-    var type: PermalinkType = PermalinkType.SIMPLE,
+    var type: DeeplinkType = DeeplinkType.SIMPLE,
     var options: OptionsDto = OptionsDto()
 )
 
@@ -12,7 +12,7 @@ data class DomainArchiveItem(
     var host: String = "",
     var apiBaseUrl: String = "",
     var landingBaseUrl: String? = null,
-    var links: List<PermalinkArchiveItem>
+    var links: List<DeeplinkArchiveItem>
 ) {
     companion object
 

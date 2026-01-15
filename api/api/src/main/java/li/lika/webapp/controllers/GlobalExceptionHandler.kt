@@ -71,6 +71,14 @@ class GlobalExceptionHandler {
             .body(ex.res())
     }
 
+    @ExceptionHandler(InvalidPasswordException::class)
+    fun handleInvalidPasswordException(ex: InvalidPasswordException, request: HttpServletRequest): ResponseEntity<MessageAndErrorCodeResponse> {
+        logger.warn("Access denied wrong password: ${ex.message}")
+        return ResponseEntity
+            .status(HttpStatus.UNAUTHORIZED)
+            .body(ex.res())
+    }
+
     @ExceptionHandler(InvalidDomainException::class)
     fun handleInvalidDomainException(ex: InvalidDomainException, request: HttpServletRequest): Any {
         logger.warn("Invalid domain: ${ex.message}")

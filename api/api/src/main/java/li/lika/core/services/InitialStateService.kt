@@ -6,12 +6,12 @@ import li.lika.security.props.SecurityProperties
 import org.springframework.stereotype.Service
 
 @Service
-class InitialStateService(val accountService: AccountService, val domainService: DomainService, val permalinkService: PermalinkService, val securityProperties: SecurityProperties) {
+class InitialStateService(val accountService: AccountService, val domainService: DomainService, val deeplinkService: DeeplinkService, val securityProperties: SecurityProperties) {
     @PostConstruct
     fun init() {
         accountService.init()
         domainService.init()
         val adminAccount = accountService.findByAccessToken(securityProperties.defaultGlobalAccessToken!!)!!
-        permalinkService.init(AccessTokenAuthentication.ofReadWriteAccessToken(adminAccount, adminAccount.defaultAccessToken))
+        deeplinkService.init(AccessTokenAuthentication.ofReadWriteAccessToken(adminAccount, adminAccount.defaultAccessToken))
     }
 }

@@ -8,9 +8,9 @@ import li.lika.client.http.domain.DomainClient
 import li.lika.client.http.domain.DomainClientImpl
 import li.lika.client.http.domain.DomainClientMock
 import li.lika.client.http.exceptions.FrogLinkClientErrorHandler
-import li.lika.client.http.permalink.PermalinkClient
-import li.lika.client.http.permalink.PermalinkClientImpl
-import li.lika.client.http.permalink.PermalinkClientMock
+import li.lika.client.http.deeplink.DeeplinkClient
+import li.lika.client.http.deeplink.DeeplinkClientImpl
+import li.lika.client.http.deeplink.DeeplinkClientMock
 import li.lika.client.http.security.AccessTokenAuthenticator
 import li.lika.client.http.security.AccessTokenCredentials
 import li.lika.client.http.security.Authenticator
@@ -18,20 +18,20 @@ import li.lika.client.http.security.DummyAuthenticator
 
 class LikaClient {
     private constructor(baseUrl: String, authenticator: Authenticator = DummyAuthenticator(), errorHandler: FrogLinkClientErrorHandler = FrogLinkClientErrorHandler(ObjectMapper())) {
-        this.permalink = PermalinkClientImpl(baseUrl, authenticator, errorHandler)
+        this.deeplink = DeeplinkClientImpl(baseUrl, authenticator, errorHandler)
         this.account = AccountClientImpl(baseUrl, authenticator, errorHandler)
         this.domain = DomainClientImpl(baseUrl, authenticator, errorHandler)
         this.authenticator = authenticator
     }
 
-    private constructor(permalinkClient: PermalinkClient, accountClient: AccountClient, domainClient: DomainClient, authenticator: Authenticator) {
-        this.permalink = permalinkClient
+    private constructor(deeplinkClient: DeeplinkClient, accountClient: AccountClient, domainClient: DomainClient, authenticator: Authenticator) {
+        this.deeplink = deeplinkClient
         this.domain = domainClient
         this.account = accountClient
         this.authenticator = authenticator
     }
 
-    val permalink: PermalinkClient
+    val deeplink: DeeplinkClient
     val account: AccountClient
     val domain: DomainClient
     val authenticator: Authenticator
@@ -50,12 +50,12 @@ class LikaClient {
             return LikaClient(baseUrl, AccessTokenAuthenticator(credentials), errorHandler)
         }
 
-        fun create(permalinkClient: PermalinkClient, accountClient: AccountClient, domainClient: DomainClient, authenticator: Authenticator): LikaClient {
-            return LikaClient(permalinkClient, accountClient, domainClient, authenticator)
+        fun create(deeplinkClient: DeeplinkClient, accountClient: AccountClient, domainClient: DomainClient, authenticator: Authenticator): LikaClient {
+            return LikaClient(deeplinkClient, accountClient, domainClient, authenticator)
         }
 
         fun mocked(): LikaClient {
-            return create(PermalinkClientMock(), AccountClientMock(), DomainClientMock(), DummyAuthenticator())
+            return create(DeeplinkClientMock(), AccountClientMock(), DomainClientMock(), DummyAuthenticator())
         }
     }
 }

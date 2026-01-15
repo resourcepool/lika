@@ -1,6 +1,6 @@
 package li.lika.core.persistence.repository;
 
-import li.lika.core.persistence.models.PermalinkDb;
+import li.lika.core.persistence.models.DeeplinkDb;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.CrudRepository;
@@ -12,12 +12,12 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface PermalinkRepository extends CrudRepository<PermalinkDb, String>, PagingAndSortingRepository<PermalinkDb, String> {
-    Optional<PermalinkDb> findFirstByHostAndSlug(String host, String slug);
-    List<PermalinkDb> findAllByHostOrderByLastUpdateDateTimeDesc(String host);
-    Page<PermalinkDb> findAllByHostOrderByLastUpdateDateTimeDesc(String host, Pageable pageable);
-    List<PermalinkDb> deleteAllByOptionExpiryDateIsBefore(LocalDate date);
+public interface PermalinkRepository extends CrudRepository<DeeplinkDb, String>, PagingAndSortingRepository<DeeplinkDb, String> {
+    Optional<DeeplinkDb> findFirstByHostAndSlug(String host, String slug);
+    List<DeeplinkDb> findAllByHostOrderByLastUpdateDateTimeDesc(String host);
+    Page<DeeplinkDb> findAllByHostOrderByLastUpdateDateTimeDesc(String host, Pageable pageable);
+    List<DeeplinkDb> deleteAllByOptionExpiryDateIsBefore(LocalDate date);
     void deleteAllByHostAndSlug(String host, String slug);
 
-    Page<PermalinkDb> findAllByHostAndSearchStringLikeIgnoreCase(String host, String searchString, Pageable pageable);
+    Page<DeeplinkDb> findAllByHostAndSearchStringLikeIgnoreCase(String host, String searchString, Pageable pageable);
 }

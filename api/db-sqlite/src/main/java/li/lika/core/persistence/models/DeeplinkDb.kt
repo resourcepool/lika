@@ -12,15 +12,15 @@ import java.time.ZonedDateTime
 
 @Entity
 @Table(
-    name = "permalinks",
+    name = "deeplinks",
     indexes = [
-        Index(name = "permalink_host", columnList = "host", unique = false),
-        Index(name = "permalink_ownerId", columnList = "ownerId", unique = false),
-        Index(name = "permalink_slug", columnList = "slug", unique = false),
-        Index(name = "permalink_createdDateTime", columnList = "createdDateTime", unique = false),
+        Index(name = "deeplink_host", columnList = "host", unique = false),
+        Index(name = "deeplink_ownerId", columnList = "ownerId", unique = false),
+        Index(name = "deeplink_slug", columnList = "slug", unique = false),
+        Index(name = "deeplink_createdDateTime", columnList = "createdDateTime", unique = false),
     ]
 )
-class PermalinkDb() {
+class DeeplinkDb() {
     constructor(
         id: String,
         host: String,
@@ -28,7 +28,7 @@ class PermalinkDb() {
         slug: String?,
         shortenedUrl: String,
         targetUrl: String,
-        type: PermalinkType,
+        type: DeeplinkType,
         createdDateTime: LocalDateTime?,
         lastUpdateDateTime: LocalDateTime?,
         optionActivationDateTime: LocalDateTime?,
@@ -59,7 +59,7 @@ class PermalinkDb() {
     private var slug: String? = null
     private var shortenedUrl: String = ""
     private var targetUrl: String = ""
-    private var type: PermalinkType = PermalinkType.SIMPLE
+    private var type: DeeplinkType = DeeplinkType.SIMPLE
     private var createdDateTime: LocalDateTime =
         ZonedDateTime.now().withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime()
     private var lastUpdateDateTime: LocalDateTime =
@@ -78,8 +78,8 @@ class PermalinkDb() {
     private var searchString: String = ""
 
 
-    fun toDomain(): Permalink {
-        return Permalink(
+    fun toDomain(): Deeplink {
+        return Deeplink(
             id!!, host, ownerId, slug, shortenedUrl, targetUrl, type,
             createdDateTime.atZone(ZoneOffset.UTC),
             lastUpdateDateTime.atZone(ZoneOffset.UTC),
@@ -105,8 +105,8 @@ class PermalinkDb() {
 
 }
 
-fun Permalink.toDb(): PermalinkDb {
-    return PermalinkDb(
+fun Deeplink.toDb(): DeeplinkDb {
+    return DeeplinkDb(
         id,
         host,
         ownerId,

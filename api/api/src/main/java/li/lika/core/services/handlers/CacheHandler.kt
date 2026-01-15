@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service
 
 @Service
 class CacheHandler {
-    @CacheEvict(cacheNames = ["permalinks", "domains", "accounts"], allEntries = true)
+    @CacheEvict(cacheNames = ["deeplinks", "domains", "accounts"], allEntries = true)
     fun evictAllCaches() {
     }
 }

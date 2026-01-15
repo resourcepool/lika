@@ -1,10 +1,10 @@
 package li.lika.core.persistence
 
-import li.lika.common.models.Permalink
+import li.lika.common.models.Deeplink
 import li.lika.common.models.dtos.PageRequest
 import li.lika.common.models.dtos.PageResponse
-import li.lika.common.persistence.PermalinkDao
-import li.lika.core.persistence.models.PermalinkDb
+import li.lika.common.persistence.DeeplinkDao
+import li.lika.core.persistence.models.DeeplinkDb
 import li.lika.core.persistence.utils.toSpringSort
 import mu.KotlinLogging
 import org.springframework.data.domain.Sort
@@ -16,7 +16,7 @@ import java.io.IOException
 import java.time.LocalDate
 
 @Repository
-open class PermalinkDaoMongoImpl(private val template: MongoTemplate) : PermalinkDao {
+open class DeeplinkDaoMongoImpl(private val template: MongoTemplate) : DeeplinkDao {
     private val logger = KotlinLogging.logger { }
 
     companion object {
@@ -27,55 +27,55 @@ open class PermalinkDaoMongoImpl(private val template: MongoTemplate) : Permalin
         const val LAST_UPDATE_PATH = "lastUpdateDateTime"
     }
 
-    override fun findOne(id: String): Permalink? {
-        val r = template.findOne(Query.query(whereIdEquals(id)), PermalinkDb::class.java)
+    override fun findOne(id: String): Deeplink? {
+        val r = template.findOne(Query.query(whereIdEquals(id)), DeeplinkDb::class.java)
         return r?.toPermalink()
     }
 
-    override fun findByHostAndSlug(host: String, slug: String): Permalink? {
+    override fun findByHostAndSlug(host: String, slug: String): Deeplink? {
         val r = template.findOne(
             Query.query(whereHostIsEqualTo(host).andOperator(whereSlugIsEqualTo(slug))),
-            PermalinkDb::class.java
+            DeeplinkDb::class.java
         )
         return r?.toPermalink()
     }
 
-    override fun save(p: Permalink): Permalink {
-        return template.save(PermalinkDb.from(p)).toPermalink()
+    override fun save(p: Deeplink): Deeplink {
+        return template.save(DeeplinkDb.from(p)).toPermalink()
     }
 
-    override fun findAll(): List<Permalink> {
-        return template.findAll(PermalinkDb::class.java)
-            .map(PermalinkDb::toPermalink)
+    override fun findAll(): List<Deeplink> {
+        return template.findAll(DeeplinkDb::class.java)
+            .map(DeeplinkDb::toPermalink)
     }
 
-    override fun findAllForHost(host: String): List<Permalink> {
+    override fun findAllForHost(host: String): List<Deeplink> {
         return template.find(
             Query.query(whereHostIsEqualTo(host)).with(Sort.by(Sort.Direction.DESC, LAST_UPDATE_PATH)),
-            PermalinkDb::class.java
+            DeeplinkDb::class.java
         )
-            .map(PermalinkDb::toPermalink)
+            .map(DeeplinkDb::toPermalink)
     }
 
-    override fun removeAllExpired(): List<Permalink> {
-        return template.findAllAndRemove(Query.query(whereExpiryDateBeforeToday()), PermalinkDb::class.java)
-            .map(PermalinkDb::toPermalink)
+    override fun removeAllExpired(): List<Deeplink> {
+        return template.findAllAndRemove(Query.query(whereExpiryDateBeforeToday()), DeeplinkDb::class.java)
+            .map(DeeplinkDb::toPermalink)
     }
 
     override fun deleteBySlug(host: String, slug: String) {
         try {
             template.remove(
                 Query.query(whereHostIsEqualTo(host).andOperator(whereSlugIsEqualTo(slug))),
-                PermalinkDb::class.java
+                DeeplinkDb::class.java
             )
         } catch (e: IOException) {
-            logger.error("Error occurred during permalink deletion: {}", e.message)
+            logger.error("Error occurred during deeplink deletion: {}", e.message)
             throw IllegalStateException(e)
         }
     }
 
     override fun deleteOne(id: String) {
-        template.remove(Query.query(whereIdEquals(id)), PermalinkDb::class.java)
+        template.remove(Query.query(whereIdEquals(id)), DeeplinkDb::class.java)
     }
 
     /**
@@ -83,14 +83,14 @@ open class PermalinkDaoMongoImpl(private val template: MongoTemplate) : Permalin
      */
     override fun deleteAll() {
         try {
-            template.remove(PermalinkDb::class.java).all()
+            template.remove(DeeplinkDb::class.java).all()
         } catch (e: IOException) {
-            logger.error("Error occurred during permalink deletion: {}", e.message)
+            logger.error("Error occurred during deeplink deletion: {}", e.message)
             throw IllegalStateException(e)
         }
     }
 
-    override fun findPageForHost(host: String, req: PageRequest): PageResponse<Permalink> {
+    override fun findPageForHost(host: String, req: PageRequest): PageResponse<Deeplink> {
         // FIXME to be tested
         // FIXME filter not implemented
         val query = Query.query(whereHostIsEqualTo(host))
@@ -101,9 +101,9 @@ open class PermalinkDaoMongoImpl(private val template: MongoTemplate) : Permalin
                 req.sort!!.toSpringSort()
             )
         )
-        val result = template.find(pageQuery, PermalinkDb::class.java)
-            .map(PermalinkDb::toPermalink)
-        val totalItemCount = template.count(query, PermalinkDb::class.java)
+        val result = template.find(pageQuery, DeeplinkDb::class.java)
+            .map(DeeplinkDb::toPermalink)
+        val totalItemCount = template.count(query, DeeplinkDb::class.java)
         return PageResponse(req, totalItemCount.toInt(), result)
     }
 

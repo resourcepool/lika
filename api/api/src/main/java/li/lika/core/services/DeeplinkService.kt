@@ -6,7 +6,7 @@ import li.lika.common.models.ProtectedLinks.isForbidden
 import li.lika.common.models.dtos.PageRequest
 import li.lika.common.models.dtos.PageResponse
 import li.lika.common.persistence.DomainDao
-import li.lika.common.persistence.PermalinkDao
+import li.lika.common.persistence.DeeplinkDao
 import li.lika.common.utils.StringUtils
 import li.lika.core.props.LikaProperties
 import li.lika.core.props.ServerProperties
@@ -22,9 +22,9 @@ import java.time.ZonedDateTime
 import java.util.*
 
 @Service
-class PermalinkService(
+class DeeplinkService(
     private val domainDao: DomainDao,
-    private val permalinkDao: PermalinkDao,
+    private val deeplinkDao: DeeplinkDao,
     private val serverProps: ServerProperties,
     private val props: LikaProperties,
     private val transactionHandler: TransactionHandler
@@ -37,25 +37,25 @@ class PermalinkService(
 
     @Scheduled(cron = CRON_SCHEDULER, zone = "Europe/Paris")
     fun cleanExpiredDaily() {
-        permalinkDao.removeAllExpired()
+        deeplinkDao.removeAllExpired()
     }
 
-    @CacheEvict("permalinks", allEntries = true)
+    @CacheEvict("deeplinks", allEntries = true)
     fun init(token: AccessTokenAuthentication) {
         cleanExpiredDaily()
         props.defaultLinks?.forEach { l ->
             val domain = domainDao.findStandardByHost(props.domains!![l.domainIndex].host)!!
-            transactionHandler.runInTransaction { save(PermalinkCreator(slug = l.slug, targetUrl = l.targetUrl, domainId = domain.id!!, ), token.getId()) }
+            transactionHandler.runInTransaction { save(DeeplinkCreator(slug = l.slug, targetUrl = l.targetUrl, domainId = domain.id!!, ), token.getId()) }
         }
     }
 
     @Transactional
-    @CacheEvict("permalinks", allEntries = true)
-    fun save(l: PermalinkCreator, ownerId: String): Permalink {
+    @CacheEvict("deeplinks", allEntries = true)
+    fun save(l: DeeplinkCreator, ownerId: String): Deeplink {
         var id = l.id
         val domain: Domain =
             domainDao.findByDomainIdAndOwnerId(l.domainId, ownerId) ?: throw InvalidHostException()
-        if (domain.landingBaseUrl == null && l.type == PermalinkType.WITH_LANDING) {
+        if (domain.landingBaseUrl == null && l.type == DeeplinkType.WITH_LANDING) {
             throw DomainLandingUnsupportedException()
         }
         if (id.isNullOrBlank()) {
@@ -71,7 +71,7 @@ class PermalinkService(
             }
         }
         val shortenedLink = "${domain.apiBaseUrl}/${l.slug}"
-        val pl = Permalink(
+        val pl = Deeplink(
             id,
             domain.host,
             ownerId,
@@ -80,7 +80,7 @@ class PermalinkService(
             l.targetUrl,
             l.type
         )
-        if (l.type == PermalinkType.WITH_LANDING && l.options.landing?.templateId != null) {
+        if (l.type == DeeplinkType.WITH_LANDING && l.options.landing?.templateId != null) {
             pl.options.landing = LandingOptions(l.options.landing!!.templateId)
         }
         if (l.options.expiry?.expiryDate != null) {
@@ -90,70 +90,70 @@ class PermalinkService(
             pl.options.activation = ActivationOptions(ZonedDateTime.parse(l.options.activation!!.activationInstant!!),
                 l.options.activation!!.targetUrlBeforeActivation)
         }
-        return permalinkDao.save(pl)
+        return deeplinkDao.save(pl)
     }
 
     @Transactional
-    fun assertPermalinkExists(id: String): Permalink {
-        return permalinkDao.findOne(id) ?: throw PermalinkNotFoundException()
+    fun assertPermalinkExists(id: String): Deeplink {
+        return deeplinkDao.findOne(id) ?: throw PermalinkNotFoundException()
     }
 
-    @Cacheable("permalinks")
-    fun findOneByHostAndSlug(host: String, slug: String): Permalink {
-        return permalinkDao.findByHostAndSlug(host, slug) ?: throw PermalinkNotFoundException()
+    @Cacheable("deeplinks")
+    fun findOneByHostAndSlug(host: String, slug: String): Deeplink {
+        return deeplinkDao.findByHostAndSlug(host, slug) ?: throw PermalinkNotFoundException()
     }
 
-    @Cacheable("permalinks")
+    @Cacheable("deeplinks")
     @Transactional
-    fun findOneByOwnerIdAndDomainIdAndSlug(ownerId: String, domainId: String, slug: String): Permalink {
+    fun findOneByOwnerIdAndDomainIdAndSlug(ownerId: String, domainId: String, slug: String): Deeplink {
         val domain = domainDao.findByDomainIdAndOwnerId(domainId, ownerId) ?: throw InvalidDomainException()
-        return permalinkDao.findByHostAndSlug(domain.host, slug) ?: throw PermalinkNotFoundException()
+        return deeplinkDao.findByHostAndSlug(domain.host, slug) ?: throw PermalinkNotFoundException()
     }
 
-    fun getAll(): List<Permalink> {
-        return permalinkDao.findAll()
+    fun getAll(): List<Deeplink> {
+        return deeplinkDao.findAll()
     }
 
     @Transactional
-    fun getAll(domainId: String): List<Permalink> {
+    fun getAll(domainId: String): List<Deeplink> {
         val domain = domainDao.findOne(domainId) ?: throw InvalidDomainException()
-        return permalinkDao.findAllForHost(domain.host)
+        return deeplinkDao.findAllForHost(domain.host)
     }
 
     @Transactional
-    fun getAll(ownerId: String, domainId: String): List<Permalink> {
+    fun getAll(ownerId: String, domainId: String): List<Deeplink> {
         val domain = domainDao.findByDomainIdAndOwnerId(domainId, ownerId) ?: throw InvalidDomainException()
-        return permalinkDao.findAllForHost(domain.host)
+        return deeplinkDao.findAllForHost(domain.host)
     }
 
     @Transactional
-    fun getPage(ownerId: String, domainId: String, req: PageRequest): PageResponse<Permalink> {
+    fun getPage(ownerId: String, domainId: String, req: PageRequest): PageResponse<Deeplink> {
         val domain = domainDao.findByDomainIdAndOwnerId(domainId, ownerId) ?: throw InvalidDomainException()
-        return permalinkDao.findPageForHost(domain.host, req)
+        return deeplinkDao.findPageForHost(domain.host, req)
     }
 
     @Transactional
-    fun getPageAdmin(domainId: String, req: PageRequest): PageResponse<Permalink> {
+    fun getPageAdmin(domainId: String, req: PageRequest): PageResponse<Deeplink> {
         val domain = domainDao.findOne(domainId) ?: throw InvalidDomainException()
-        return permalinkDao.findPageForHost(domain.host, req)
+        return deeplinkDao.findPageForHost(domain.host, req)
     }
 
     @Transactional
     fun deleteBySlug(host: String, slug: String) {
-        permalinkDao.findByHostAndSlug(host, slug) ?: throw PermalinkNotFoundException()
-        return permalinkDao.deleteBySlug(host, slug)
+        deeplinkDao.findByHostAndSlug(host, slug) ?: throw PermalinkNotFoundException()
+        return deeplinkDao.deleteBySlug(host, slug)
     }
 
     @Transactional
     fun suggestSlugs(ownerId: String, domainId: String, searchStr: String): List<String> {
         val domain = domainDao.findByDomainIdAndOwnerId(domainId, ownerId) ?: throw InvalidDomainException()
         val normalizedString = StringUtils.normalizeAlphaNumeric(searchStr)
-        permalinkDao.findByHostAndSlug(domain.host, normalizedString) ?: return listOf(normalizedString)
+        deeplinkDao.findByHostAndSlug(domain.host, normalizedString) ?: return listOf(normalizedString)
         val alternatives = HashSet<String>()
         do {
             alternatives.addAll(
                 StringUtils.suggestAlternatives(normalizedString, 10)
-                    .filter { a -> permalinkDao.findByHostAndSlug(domainId, a) == null })
+                    .filter { a -> deeplinkDao.findByHostAndSlug(domainId, a) == null })
         } while (alternatives.size < 4)
         return alternatives.toList().subList(0, 4)
     }
@@ -163,7 +163,7 @@ class PermalinkService(
         val slugs = StringUtils.generateSlugs()
         for (i in 0..slugs.size) {
             val s = slugs[i]
-            permalinkDao.findByHostAndSlug(host, s) ?: return s
+            deeplinkDao.findByHostAndSlug(host, s) ?: return s
         }
         return findValidSlug(host)
     }
@@ -176,16 +176,16 @@ class PermalinkService(
         if (isForbidden(slug)) {
             throw SlugAlreadyExistsException()
         }
-        if (permalinkDao.findByHostAndSlug(host, slug) != null) {
+        if (deeplinkDao.findByHostAndSlug(host, slug) != null) {
             throw SlugAlreadyExistsException()
         }
     }
 
-    fun findOne(id: String): Permalink? {
-        return permalinkDao.findOne(id)
+    fun findOne(id: String): Deeplink? {
+        return deeplinkDao.findOne(id)
     }
 
     fun deleteOne(id: String) {
-        permalinkDao.deleteOne(id)
+        deeplinkDao.deleteOne(id)
     }
 }

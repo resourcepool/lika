@@ -9,8 +9,8 @@ import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 
-@Document(collection = "permalinks")
-data class PermalinkDb(
+@Document(collection = "deeplinks")
+data class DeeplinkDb(
     @Id
     var id: String = "",
     @Indexed
@@ -21,7 +21,7 @@ data class PermalinkDb(
     var slug: String? = null,
     var shortenedUrl: String = "",
     var targetUrl: String = "",
-    var type: PermalinkType = PermalinkType.SIMPLE,
+    var type: DeeplinkType = DeeplinkType.SIMPLE,
     @Indexed
     var createdDateTime: LocalDateTime = ZonedDateTime.now().withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime(),
     var lastUpdateDateTime: LocalDateTime = ZonedDateTime.now().withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime(),
@@ -35,8 +35,8 @@ data class PermalinkDb(
     var optionLandingTemplateId: String? = null
 ) {
 
-    fun toPermalink(): Permalink {
-        return Permalink(
+    fun toPermalink(): Deeplink {
+        return Deeplink(
             id, host, ownerId, slug, shortenedUrl, targetUrl, type,
             createdDateTime.atZone(ZoneOffset.UTC),
             lastUpdateDateTime.atZone(ZoneOffset.UTC),
@@ -61,8 +61,8 @@ data class PermalinkDb(
     }
 
     companion object {
-        fun from(pl: Permalink): PermalinkDb {
-            return PermalinkDb(
+        fun from(pl: Deeplink): DeeplinkDb {
+            return DeeplinkDb(
                 pl.id,
                 pl.host,
                 pl.ownerId,
