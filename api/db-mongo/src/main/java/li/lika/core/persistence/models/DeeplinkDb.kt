@@ -32,7 +32,9 @@ data class DeeplinkDb(
     // Expiry options
     var optionExpiryDate: LocalDate? = null,
     // Landing options
-    var optionLandingTemplateId: String? = null
+    var optionLandingTemplateId: String? = null,
+    // Password options
+    var optionPassword: String? = null
 ) {
 
     fun toPermalink(): Deeplink {
@@ -55,6 +57,10 @@ data class DeeplinkDb(
                 expiry = when (optionExpiryDate) {
                     null -> null
                     else -> ExpiryOptions(optionExpiryDate)
+                },
+                password = when (optionPassword) {
+                    null -> null
+                    else -> PasswordProtectedOptions(optionPassword)
                 }
             )
         )
@@ -68,14 +74,15 @@ data class DeeplinkDb(
                 pl.ownerId,
                 pl.slug,
                 pl.shortenedUrl,
-                pl.targetUrl,
+                pl.targetUrl!!,
                 pl.type,
                 pl.createdDateTime.withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime(),
                 pl.lastUpdateDateTime.withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime(),
                 pl.options.activation?.activationInstant?.withZoneSameInstant(ZoneOffset.UTC)?.toLocalDateTime(),
                 pl.options.activation?.targetUrlBeforeActivation,
                 pl.options.expiry?.expiryDate,
-                pl.options.landing?.templateId
+                pl.options.landing?.templateId,
+                pl.options.password?.password
             )
         }
     }

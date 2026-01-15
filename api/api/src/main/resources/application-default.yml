@@ -39,6 +39,8 @@ lika:
       domainIndex: 0
     - slug: test10
       targetUrl: https://google.com
+      type: protected
+      password: loic
       domainIndex: 0
     - slug: other
       targetUrl: https://bing.com
@@ -55,4 +57,4 @@ security:
 logging:
   level:
     li.lika: info
-    org.springframework: debug
+    org.springframework: info

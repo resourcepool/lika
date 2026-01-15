@@ -40,7 +40,7 @@ data class Deeplink(
     var options: Options = Options()
 )
 
-fun Deeplink.hideSafely(): Deeplink {
+fun Deeplink.hideTarget(): Deeplink {
     return this.copy(
         id = this.id,
         host = this.host,
@@ -48,6 +48,26 @@ fun Deeplink.hideSafely(): Deeplink {
         slug = this.slug,
         shortenedUrl = this.shortenedUrl,
         targetUrl = null, // should be null
+        type = this.type,
+        createdDateTime = this.createdDateTime,
+        lastUpdateDateTime = this.lastUpdateDateTime,
+        options = this.options.copy(
+            activation = options.activation,
+            landing = options.landing,
+            expiry = options.expiry,
+            password = null // should not send password
+        ))
+}
+
+
+fun Deeplink.safe(): Deeplink {
+    return this.copy(
+        id = this.id,
+        host = this.host,
+        ownerId = this.ownerId,
+        slug = this.slug,
+        shortenedUrl = this.shortenedUrl,
+        targetUrl = this.targetUrl, // should be null
         type = this.type,
         createdDateTime = this.createdDateTime,
         lastUpdateDateTime = this.lastUpdateDateTime,

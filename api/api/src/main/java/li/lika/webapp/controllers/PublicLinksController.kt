@@ -4,6 +4,7 @@ import li.lika.common.exceptions.InvalidHostException
 import li.lika.common.models.DeeplinkType
 import li.lika.core.services.DomainService
 import li.lika.core.services.DeeplinkService
+import li.lika.security.props.SecurityProperties
 import org.springframework.stereotype.Controller
 import org.springframework.ui.ModelMap
 import org.springframework.web.bind.annotation.GetMapping
@@ -16,6 +17,7 @@ import org.springframework.web.servlet.ModelAndView
 @RequestMapping
 @Controller
 class PublicLinksController(
+    private val properties: SecurityProperties,
         private val domainService: DomainService,
         private val deeplinkService: DeeplinkService) {
     private val logger = org.slf4j.LoggerFactory.getLogger(PublicLinksController::class.java)
@@ -43,7 +45,9 @@ class PublicLinksController(
             return ModelAndView("redirect:${pl.targetUrl}", model)
         }
         if (pl.type == DeeplinkType.PROTECTED) {
-            return ModelAndView("forward:/static/index.html")
+            return ModelAndView("protected")
+                .addObject("l", pl.slug)
+                .addObject("accessToken", properties.defaultGlobalAccessToken)
         }
         val domain = domainService.findOneByHostAndOwnerId(pl.host, pl.ownerId) ?: throw InvalidHostException()
         return ModelAndView("redirect:${domain.landingBaseUrl}?l=${pl.slug}", model)

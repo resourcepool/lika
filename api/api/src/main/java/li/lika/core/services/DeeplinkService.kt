@@ -45,7 +45,13 @@ class DeeplinkService(
         cleanExpiredDaily()
         props.defaultLinks?.forEach { l ->
             val domain = domainDao.findStandardByHost(props.domains!![l.domainIndex].host)!!
-            transactionHandler.runInTransaction { save(DeeplinkCreator(slug = l.slug, targetUrl = l.targetUrl, domainId = domain.id!!, ), token.getId()) }
+            transactionHandler.runInTransaction {
+                val password = when(l.password) {
+                    null -> null
+                    else -> PasswordProtectedOptionsDto(l.password)
+                }
+                save(DeeplinkCreator(slug = l.slug, type = DeeplinkType.read(l.type), targetUrl = l.targetUrl, domainId = domain.id!!, options = OptionsDto(password = password) ), token.getId())
+            }
         }
     }
 
@@ -57,6 +63,9 @@ class DeeplinkService(
             domainDao.findByDomainIdAndOwnerId(l.domainId, ownerId) ?: throw InvalidHostException()
         if (domain.landingBaseUrl == null && l.type == DeeplinkType.WITH_LANDING) {
             throw DomainLandingUnsupportedException()
+        }
+        if (l.type == DeeplinkType.PROTECTED && l.options.password?.password.isNullOrBlank()) {
+            throw PasswordMissingException()
         }
         if (id.isNullOrBlank()) {
             id = UUID.randomUUID().toString()
@@ -89,6 +98,9 @@ class DeeplinkService(
         if (l.options.activation?.activationInstant != null) {
             pl.options.activation = ActivationOptions(ZonedDateTime.parse(l.options.activation!!.activationInstant!!),
                 l.options.activation!!.targetUrlBeforeActivation)
+        }
+        if (l.options.password?.password != null) {
+            pl.options.password = PasswordProtectedOptions(l.options.password!!.password)
         }
         return deeplinkDao.save(pl)
     }

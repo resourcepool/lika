@@ -5,7 +5,8 @@ import li.lika.common.exceptions.InvalidDomainException
 import li.lika.common.exceptions.InvalidPasswordException
 import li.lika.common.models.Deeplink
 import li.lika.common.models.DeeplinkType
-import li.lika.common.models.hideSafely
+import li.lika.common.models.hideTarget
+import li.lika.common.models.safe
 import li.lika.core.services.DomainService
 import li.lika.core.services.DeeplinkService
 import li.lika.security.models.AccessTokenAuthentication
@@ -44,7 +45,7 @@ class ApiSearchController(
                 throw InvalidDomainException()
             }
         }
-        assertResourceAuthorized(owner, d)
+        assertResourceAuthorized(owner, d!!)
 
         val deepLink = deeplinkService.findOneByOwnerIdAndDomainIdAndSlug(owner.getId(), d, slug)
         when (deepLink.type) {
@@ -52,12 +53,12 @@ class ApiSearchController(
             DeeplinkType.WITH_LANDING -> return deepLink
             DeeplinkType.PROTECTED -> {
                 if (password.isNullOrBlank()) {
-                    return deepLink.hideSafely()
+                    return deepLink.hideTarget()
                 }
                 if (deepLink.options.password?.password != password) {
                     throw InvalidPasswordException()
                 }
-                return deepLink
+                return deepLink.safe()
             }
         }
     }

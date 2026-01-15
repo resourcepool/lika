@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lika - Protected Link</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .container {
+            text-align: center;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 3rem 2rem;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 90%;
+        }
+
+        .logo {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 2rem;
+        }
+
+        .password-form {
+            margin: 2rem 0;
+        }
+
+        .password-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .password-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .submit-button {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            font-weight: bold;
+            color: white;
+            background: #667eea;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .submit-button:hover {
+            background: #5568d3;
+        }
+
+        .submit-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            display: none;
+            padding: 0.75rem 1rem;
+            background: #dc3545;
+            color: white;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .footer {
+            margin-top: 2rem;
+            font-size: 0.9rem;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🔒 Lika</div>
+        <div class="subtitle">This link is password protected</div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <form class="password-form" id="passwordForm">
+            <input
+                type="password"
+                class="password-input"
+                id="passwordInput"
+                placeholder="Enter password"
+                required
+            >
+            <button type="submit" class="submit-button" id="submitButton">
+                Ok
+            </button>
+        </form>
+
+        <div class="footer">
+            <p>© Resourcepool 2026</p>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        // Get slug from model attribute injected by Thymeleaf
+        const slug = /*[[${l}]]*/ '';
+        const accessToken = /*[[${accessToken}]]*/ '';
+        const host = window.location.host;
+
+        // Check if slug is provided
+        if (!slug) {
+            showError('Missing required parameter: slug');
+            document.getElementById('submitButton').disabled = true;
+        }
+
+        // Form submission handler
+        document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const password = document.getElementById('passwordInput').value;
+            const submitButton = document.getElementById('submitButton');
+            const errorMessage = document.getElementById('errorMessage');
+
+            // Hide previous errors
+            errorMessage.classList.remove('show');
+
+            // Disable button during request
+            submitButton.disabled = true;
+            submitButton.textContent = 'Checking...';
+
+            try {
+                // Build API URL
+                let apiUrl = `/api/search/slug/${encodeURIComponent(slug)}?accessToken=${accessToken}&password=${encodeURIComponent(password)}`;
+                // Make API request
+                const response = await fetch(apiUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Host': host
+                    },
+                    credentials: 'include' // Include cookies for authentication
+                });
+
+                if (response.status === 401) {
+                    // Wrong password
+                    showError('Invalid password. Please try again.');
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Ok';
+                    return;
+                }
+
+                if (!response.ok) {
+                    // Other errors
+                    const errorText = await response.text();
+                    showError(`Error: ${response.status} - ${errorText || 'Unknown error'}`);
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Ok';
+                    return;
+                }
+
+                // Success - parse response and redirect
+                const deeplink = await response.json();
+
+                if (deeplink.targetUrl) {
+                    // Redirect to target URL
+                    window.location.href = deeplink.targetUrl;
+                } else {
+                    showError('No target URL found in response');
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Ok';
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Failed to verify password. Please try again.');
+                submitButton.disabled = false;
+                submitButton.textContent = 'Ok';
+            }
+        });
+
+        function showError(message) {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            errorMessage.classList.add('show');
+        }
+    </script>
+</body>
+</html>

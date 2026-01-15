@@ -44,7 +44,7 @@ class ArchiveService(
                 val deeplinks = deeplinkDao.findAllForHost(d.host)
                 targetDomains.add(DomainArchiveItem.fromDomain(d, targetPermalinks))
                 deeplinks.forEach { p ->
-                    targetPermalinks.add(DeeplinkArchiveItem(p.targetUrl, p.slug, p.type, p.options.toDto()))
+                    targetPermalinks.add(DeeplinkArchiveItem(p.targetUrl!!, p.slug, p.type, p.options.toDto()))
                 }
             }
         }

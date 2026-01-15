@@ -136,6 +136,14 @@ class GlobalExceptionHandler {
             .body(ex.res())
     }
 
+    @ExceptionHandler(PasswordMissingException::class)
+    fun handlePasswordMissing(ex: PasswordMissingException, request: HttpServletRequest): ResponseEntity<MessageAndErrorCodeResponse> {
+        logger.warn("Password missing: ${ex.message}")
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(ex.res())
+    }
+
     @ExceptionHandler(AuthenticationException::class)
     fun handleAuthenticationException(ex: AuthenticationException, request: HttpServletRequest): ResponseEntity<MessageAndErrorCodeResponse> {
         logger.warn("Authentication failed: ${ex.message}")

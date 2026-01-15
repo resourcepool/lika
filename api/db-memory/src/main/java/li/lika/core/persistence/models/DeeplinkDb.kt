@@ -35,6 +35,7 @@ class DeeplinkDb() {
         optionActivationTargetUrlBeforeActivation: String?,
         optionExpiryDate: LocalDate?,
         optionLandingTemplateId: String?,
+        optionPassword: String?
     ) : this() {
         this.id = id
         this.host = host
@@ -49,6 +50,7 @@ class DeeplinkDb() {
         this.optionActivationTargetUrlBeforeActivation = optionActivationTargetUrlBeforeActivation
         this.optionExpiryDate = optionExpiryDate
         this.optionLandingTemplateId = optionLandingTemplateId
+        this.optionPassword = optionPassword
         this.searchString = "$slug $targetUrl $host"
     }
 
@@ -75,6 +77,9 @@ class DeeplinkDb() {
     // Landing options
     var optionLandingTemplateId: String? = null
 
+    // Password options
+    var optionPassword: String? = null
+
     private var searchString: String = ""
 
 
@@ -98,6 +103,10 @@ class DeeplinkDb() {
                 expiry = when (optionExpiryDate) {
                     null -> null
                     else -> ExpiryOptions(optionExpiryDate)
+                },
+                password = when (optionPassword) {
+                    null -> null
+                    else -> PasswordProtectedOptions(optionPassword)
                 }
             )
         )
@@ -112,14 +121,15 @@ fun Deeplink.toDb(): DeeplinkDb {
         ownerId,
         slug,
         shortenedUrl,
-        targetUrl,
+        targetUrl!!,
         type,
         createdDateTime.withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime(),
         lastUpdateDateTime.withZoneSameInstant(ZoneOffset.UTC).toLocalDateTime(),
         options.activation?.activationInstant?.withZoneSameInstant(ZoneOffset.UTC)?.toLocalDateTime(),
         options.activation?.targetUrlBeforeActivation,
         options.expiry?.expiryDate,
-        options.landing?.templateId
+        options.landing?.templateId,
+        options.password?.password
     )
 }
 
