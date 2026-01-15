@@ -18,12 +18,12 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { CommonModule } from '@angular/common';
 import {debounceTime, distinctUntilChanged, startWith, combineLatest, map} from 'rxjs';
-import { PermalinkModal } from '../permalink-modal/permalink-modal';
+import { DeeplinkModal } from '../permalink-modal/permalink-modal';
 import { Footer } from '../footer/footer';
-import { Domain, Permalink, PermalinkCreator, ApiError, PageRequest, PageResponse, SortDirection, SortProperty } from '../models/permalink.model';
+import { Domain, Deeplink, DeeplinkCreator, ApiError, PageRequest, PageResponse, SortDirection, SortProperty } from '../models/permalink.model';
 import { MatDivider } from '@angular/material/divider';
 import { DomainService } from '../services/domain';
-import { PermalinkService } from '../services/permalink';
+import { DeeplinkService } from '../services/permalink';
 import { AuthService } from '../services/auth';
 
 @Component({
@@ -56,17 +56,17 @@ export class DashboardComponent implements OnInit {
   protected readonly title = signal('Links Dashboard');
   private dialog = inject(MatDialog);
   private domainService = inject(DomainService);
-  private permalinkService = inject(PermalinkService);
+  private deeplinkService = inject(DeeplinkService);
   private snackBar = inject(MatSnackBar);
   private authService = inject(AuthService);
   private router = inject(Router);
 
   // Data properties
   protected domains: Domain[] = [];
-  protected displayedPermalinks: Permalink[] = []; // Current page permalinks from server
+  protected displayedDeeplinks: Deeplink[] = []; // Current page deeplinks from server
   protected loading = false;
-  protected loadingPermalinks = false;
-  protected totalPermalinks = 0;
+  protected loadingDeeplinks = false;
+  protected totalDeeplinks = 0;
   protected isAdmin = false;
 
   // Pagination properties
@@ -100,8 +100,8 @@ export class DashboardComponent implements OnInit {
       next: (domains) => {
         this.domains = domains;
         this.loading = false;
-        // Load permalinks with pagination
-        this.loadPermalinks();
+        // Load deeplinks with pagination
+        this.loadDeeplinks();
       },
       error: (error: ApiError) => {
         console.error('Failed to load domains:', error);
@@ -114,20 +114,20 @@ export class DashboardComponent implements OnInit {
           { id: '1', host: 'short.ly', standard: false, apiBaseUrl: '', landingBaseUrl: '' },
           { id: '2', host: 'link.co', standard: false, apiBaseUrl: '', landingBaseUrl: '' }
         ];
-        this.loadPermalinks();
+        this.loadDeeplinks();
       }
     });
   }
 
-  private loadPermalinks() {
+  private loadDeeplinks() {
     if (this.domains.length === 0) return;
 
-    this.loadingPermalinks = true;
-    this.displayedPermalinks = [];
+    this.loadingDeeplinks = true;
+    this.displayedDeeplinks = [];
 
     // Build page request
     const searchTerm = (this.searchControl.value || '').toLowerCase().trim();
-    const pageRequest = this.permalinkService.createPageRequest(
+    const pageRequest = this.deeplinkService.createPageRequest(
       this.pageSize,
       this.currentPage * this.pageSize,
       searchTerm || undefined,
@@ -144,13 +144,13 @@ export class DashboardComponent implements OnInit {
   }
 
   private loadFromSingleDomain(domainId: string | null, pageRequest: PageRequest) {
-    this.permalinkService.getPermalinksPage(domainId, pageRequest, this.isAdmin).subscribe({
-      next: (response: PageResponse<Permalink>) => {
-        // Find domain info for enriching permalinks
+    this.deeplinkService.getDeeplinksPage(domainId, pageRequest, this.isAdmin).subscribe({
+      next: (response: PageResponse<Deeplink>) => {
+        // Find domain info for enriching deeplinks
         const domain = this.domains.find(d => d.id === domainId);
 
-        // Add domain info to each permalink
-        this.displayedPermalinks = response.items.map(p => ({
+        // Add domain info to each deeplink
+        this.displayedDeeplinks = response.items.map(p => ({
           ...p,
           domainHost: domain?.host || 'Unknown',
           domainId: domain?.id || 'Unknown',
@@ -158,15 +158,15 @@ export class DashboardComponent implements OnInit {
           options: p.options || {}
         }));
 
-        this.totalPermalinks = response.totalItemCount;
-        this.loadingPermalinks = false;
+        this.totalDeeplinks = response.totalItemCount;
+        this.loadingDeeplinks = false;
       },
       error: (error: ApiError) => {
-        console.error(`Failed to load permalinks for domain ${domainId}:`, error);
-        this.snackBar.open(`Failed to load permalinks: ${error.message}`, 'Close', {
+        console.error(`Failed to load deeplinks for domain ${domainId}:`, error);
+        this.snackBar.open(`Failed to load deeplinks: ${error.message}`, 'Close', {
           duration: 5000
         });
-        this.loadingPermalinks = false;
+        this.loadingDeeplinks = false;
       }
     });
   }
@@ -201,11 +201,11 @@ export class DashboardComponent implements OnInit {
       this.selectedDomainId = null;
     }
 
-    // Load permalinks with new filters
-    this.loadPermalinks();
+    // Load deeplinks with new filters
+    this.loadDeeplinks();
   }
 
-  openCreatePermalinkModal() {
+  openCreateDeeplinkModal() {
     if (this.domains.length === 0) {
       this.snackBar.open('No domains available. Please add a domain first.', 'Close', {
         duration: 3000
@@ -213,33 +213,33 @@ export class DashboardComponent implements OnInit {
       return;
     }
 
-    const dialogRef = this.dialog.open(PermalinkModal, {
+    const dialogRef = this.dialog.open(DeeplinkModal, {
       width: '600px',
       data: { domains: this.domains }
     });
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.createPermalink(result);
+        this.createDeeplink(result);
       }
     });
   }
 
-  private createPermalink(permalinkData: PermalinkCreator) {
-    this.permalinkService.createPermalink(permalinkData, this.isAdmin).subscribe({
-      next: (permalink) => {
-        this.snackBar.open(`Permalink created successfully: ${permalink.shortenedUrl}`, 'Close', {
+  private createDeeplink(deeplinkData: DeeplinkCreator) {
+    this.deeplinkService.createDeeplink(deeplinkData, this.isAdmin).subscribe({
+      next: (deeplink) => {
+        this.snackBar.open(`Deeplink created successfully: ${deeplink.shortenedUrl}`, 'Close', {
           duration: 5000
         });
-        console.log('Permalink created:', permalink);
-        // Refresh the permalink list
-        this.loadPermalinks();
+        console.log('Deeplink created:', deeplink);
+        // Refresh the deeplink list
+        this.loadDeeplinks();
       },
       error: (error: ApiError) => {
-        this.snackBar.open(`Failed to create permalink: ${error.message}`, 'Close', {
+        this.snackBar.open(`Failed to create deeplink: ${error.message}`, 'Close', {
           duration: 5000
         });
-        console.error('Failed to create permalink:', error);
+        console.error('Failed to create deeplink:', error);
       }
     });
   }
@@ -269,17 +269,17 @@ export class DashboardComponent implements OnInit {
     window.open(url, '_blank');
   }
 
-  deletePermalink(permalink: Permalink) {
-    if (confirm(`Are you sure you want to delete ${permalink.shortenedUrl}?`)) {
-      this.permalinkService.deletePermalinkById(permalink.id, this.isAdmin).subscribe({
+  deleteDeeplink(deeplink: Deeplink) {
+    if (confirm(`Are you sure you want to delete ${deeplink.shortenedUrl}?`)) {
+      this.deeplinkService.deleteDeeplinkById(deeplink.id, this.isAdmin).subscribe({
         next: () => {
-          this.snackBar.open('Permalink deleted successfully', 'Close', {
+          this.snackBar.open('Deeplink deleted successfully', 'Close', {
             duration: 3000
           });
-          this.loadPermalinks();
+          this.loadDeeplinks();
         },
         error: (error: ApiError) => {
-          this.snackBar.open(`Failed to delete permalink: ${error.message}`, 'Close', {
+          this.snackBar.open(`Failed to delete deeplink: ${error.message}`, 'Close', {
             duration: 5000
           });
         }
@@ -298,20 +298,20 @@ export class DashboardComponent implements OnInit {
   }
 
   // Options utility methods
-  getPermalinkStatus(permalink: Permalink): { status: string; color: string; icon: string } {
+  getDeeplinkStatus(deeplink: Deeplink): { status: string; color: string; icon: string } {
     const now = new Date();
 
     // Check if it has activation options
-    if (permalink.options?.activation?.activationInstant) {
-      const activationDate = new Date(permalink.options.activation.activationInstant);
+    if (deeplink.options?.activation?.activationInstant) {
+      const activationDate = new Date(deeplink.options.activation.activationInstant);
       if (now < activationDate) {
         return { status: 'Scheduled', color: 'warn', icon: 'schedule' };
       }
     }
 
     // Check if it's expired
-    if (permalink.options?.expiry?.expiryDate) {
-      const expiryDate = new Date(permalink.options.expiry.expiryDate);
+    if (deeplink.options?.expiry?.expiryDate) {
+      const expiryDate = new Date(deeplink.options.expiry.expiryDate);
       if (now > expiryDate) {
         return { status: 'Expired', color: 'warn', icon: 'expired' };
       }
@@ -320,29 +320,29 @@ export class DashboardComponent implements OnInit {
     return { status: 'Active', color: 'primary', icon: 'check_circle' };
   }
 
-  hasLandingPage(permalink: Permalink): boolean {
-    return permalink.type === 'WITH_LANDING' && !!permalink.options?.landing?.templateId;
+  hasLandingPage(deeplink: Deeplink): boolean {
+    return deeplink.type === 'WITH_LANDING' && !!deeplink.options?.landing?.templateId;
   }
 
-  getOptionsTooltip(permalink: Permalink): string {
+  getOptionsTooltip(deeplink: Deeplink): string {
     const options: string[] = [];
 
-    if (permalink.options?.activation?.activationInstant) {
-      const date = new Date(permalink.options.activation.activationInstant);
+    if (deeplink.options?.activation?.activationInstant) {
+      const date = new Date(deeplink.options.activation.activationInstant);
       options.push(`Activates: ${date.toLocaleDateString()} ${date.toLocaleTimeString()}`);
     }
 
-    if (permalink.options?.activation?.targetUrlBeforeActivation) {
-      options.push(`Before activation: ${permalink.options.activation.targetUrlBeforeActivation}`);
+    if (deeplink.options?.activation?.targetUrlBeforeActivation) {
+      options.push(`Before activation: ${deeplink.options.activation.targetUrlBeforeActivation}`);
     }
 
-    if (permalink.options?.expiry?.expiryDate) {
-      const date = new Date(permalink.options.expiry.expiryDate);
+    if (deeplink.options?.expiry?.expiryDate) {
+      const date = new Date(deeplink.options.expiry.expiryDate);
       options.push(`Expires: ${date.toLocaleDateString()}`);
     }
 
-    if (permalink.options?.landing?.templateId) {
-      options.push(`Landing template: ${permalink.options.landing.templateId}`);
+    if (deeplink.options?.landing?.templateId) {
+      options.push(`Landing template: ${deeplink.options.landing.templateId}`);
     }
 
     return options.length > 0 ? options.join('\n') : 'No special options';
@@ -352,12 +352,12 @@ export class DashboardComponent implements OnInit {
   onPageChange(event: PageEvent) {
     this.currentPage = event.pageIndex;
     this.pageSize = event.pageSize;
-    this.loadPermalinks(); // Load new page from server
+    this.loadDeeplinks(); // Load new page from server
   }
 
   resetPagination() {
     this.currentPage = 0;
-    this.loadPermalinks();
+    this.loadDeeplinks();
   }
 
   // Helper method to get domain name by ID

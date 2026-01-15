@@ -64,7 +64,7 @@ class DeeplinkService(
         if (domain.landingBaseUrl == null && l.type == DeeplinkType.WITH_LANDING) {
             throw DomainLandingUnsupportedException()
         }
-        if (l.type == DeeplinkType.PROTECTED && l.options.password?.password.isNullOrBlank()) {
+        if (l.options.password != null && l.options.password?.password.isNullOrBlank()) {
             throw PasswordMissingException()
         }
         if (id.isNullOrBlank()) {

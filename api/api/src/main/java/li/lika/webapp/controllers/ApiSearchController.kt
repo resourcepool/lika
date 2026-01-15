@@ -31,6 +31,10 @@ class ApiSearchController(
         return deeplinkService.suggestSlugs(owner.getId(), domainId, searchStr)
     }
 
+    private fun isPasswordProtected(deepLink: Deeplink): Boolean {
+        return !(deepLink.options.password?.password.isNullOrBlank())
+    }
+
     @GetMapping("/slug/{slug}")
     fun search(@PathVariable slug: String,
                @RequestParam(required = false) domainId: String?,
@@ -48,19 +52,16 @@ class ApiSearchController(
         assertResourceAuthorized(owner, d!!)
 
         val deepLink = deeplinkService.findOneByOwnerIdAndDomainIdAndSlug(owner.getId(), d, slug)
-        when (deepLink.type) {
-            DeeplinkType.SIMPLE -> return deepLink
-            DeeplinkType.WITH_LANDING -> return deepLink
-            DeeplinkType.PROTECTED -> {
-                if (password.isNullOrBlank()) {
-                    return deepLink.hideTarget()
-                }
-                if (deepLink.options.password?.password != password) {
-                    throw InvalidPasswordException()
-                }
-                return deepLink.safe()
+        if (isPasswordProtected(deepLink)) {
+            // Password protected
+            if (password.isNullOrBlank()) {
+                return deepLink.hideTarget()
+            }
+            if (deepLink.options.password?.password != password) {
+                throw InvalidPasswordException()
             }
         }
+        return deepLink.safe()
     }
 
     fun assertResourceAuthorized(owner: AccessTokenAuthentication, domainId: String) {

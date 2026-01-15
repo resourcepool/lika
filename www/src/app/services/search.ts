@@ -3,7 +3,7 @@ import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
-import { Permalink, ApiError } from '../models/permalink.model';
+import { Deeplink, ApiError } from '../models/permalink.model';
 
 @Injectable({
   providedIn: 'root'
@@ -17,7 +17,7 @@ export class SearchService {
    */
   getSlugSuggestions(searchStr: string, domainId: string): Observable<string[]> {
     const params = new HttpParams().set('domainId', domainId);
-    
+
     return this.http.get<string[]>(`${this.baseUrl}/slug/suggestions/${encodeURIComponent(searchStr)}`, { params })
       .pipe(
         catchError(this.handleError)
@@ -27,7 +27,7 @@ export class SearchService {
   /**
    * Search for a specific permalink by slug
    */
-  searchBySlug(slug: string, domainId?: string, host?: string): Observable<Permalink> {
+  searchBySlug(slug: string, domainId?: string, host?: string): Observable<Deeplink> {
     let params = new HttpParams();
     let headers = new HttpHeaders();
 
@@ -39,9 +39,9 @@ export class SearchService {
       headers = headers.set('Host', host);
     }
 
-    return this.http.get<Permalink>(`${this.baseUrl}/slug/${encodeURIComponent(slug)}`, { 
-      params, 
-      headers 
+    return this.http.get<Deeplink>(`${this.baseUrl}/slug/${encodeURIComponent(slug)}`, {
+      params,
+      headers
     })
       .pipe(
         catchError(this.handleError)

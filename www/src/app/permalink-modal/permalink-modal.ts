@@ -8,14 +8,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { CommonModule } from '@angular/common';
-import { PermalinkCreator, PermalinkType, Domain, OptionsDto } from '../models/permalink.model';
+import { DeeplinkCreator, DeeplinkType, Domain, OptionsDto } from '../models/permalink.model';
 import { AuthService } from '../services/auth';
-import { PermalinkService } from '../services/permalink';
+import { DeeplinkService } from '../services/permalink';
 import { Observable, of, timer } from 'rxjs';
 import { map, catchError, switchMap, distinctUntilChanged, debounceTime } from 'rxjs/operators';
 
 @Component({
-  selector: 'app-permalink-modal',
+  selector: 'app-deeplink-modal',
   imports: [
     CommonModule,
     ReactiveFormsModule,
@@ -30,15 +30,15 @@ import { map, catchError, switchMap, distinctUntilChanged, debounceTime } from '
   templateUrl: './permalink-modal.html',
   styleUrl: './permalink-modal.scss'
 })
-export class PermalinkModal implements OnInit {
+export class DeeplinkModal implements OnInit {
   private fb = inject(FormBuilder);
-  private dialogRef = inject(MatDialogRef<PermalinkModal>);
-  private data = inject<{ domains: Domain[], permalink?: PermalinkCreator }>(MAT_DIALOG_DATA);
+  private dialogRef = inject(MatDialogRef<DeeplinkModal>);
+  private data = inject<{ domains: Domain[], deeplink?: DeeplinkCreator }>(MAT_DIALOG_DATA);
   private authService = inject(AuthService);
-  private permalinkService = inject(PermalinkService);
-  permalinkForm!: FormGroup;
+  private deeplinkService = inject(DeeplinkService);
+  deeplinkForm!: FormGroup;
   domains: Domain[] = [];
-  permalinkTypes = Object.values(PermalinkType);
+  deeplinkTypes = Object.values(DeeplinkType);
   isEditMode = false;
 
   private slugAvailabilityValidator(): AsyncValidatorFn {
@@ -47,18 +47,18 @@ export class PermalinkModal implements OnInit {
         return of(null);
       }
 
-      const domainId = this.permalinkForm?.get('domainId')?.value;
+      const domainId = this.deeplinkForm?.get('domainId')?.value;
       if (!domainId) {
         return of(null);
       }
 
       // Skip validation if in edit mode and the slug hasn't changed
-      if (this.isEditMode && this.data?.permalink?.slug === control.value) {
+      if (this.isEditMode && this.data?.deeplink?.slug === control.value) {
         return of(null);
       }
 
       return timer(300).pipe(
-        switchMap(() => this.permalinkService.checkSlugAvailability(control.value, domainId, this.authService.isAdmin())),
+        switchMap(() => this.deeplinkService.checkSlugAvailability(control.value, domainId, this.authService.isAdmin())),
         map(() => null), // Success means slug is available
         catchError((error) => {
           // If error occurs, slug is not available
@@ -70,41 +70,42 @@ export class PermalinkModal implements OnInit {
 
   ngOnInit() {
     this.domains = this.data?.domains || [];
-    this.isEditMode = !!this.data?.permalink;
+    this.isEditMode = !!this.data?.deeplink;
 
 
     this.initializeForm();
 
-    if (this.isEditMode && this.data.permalink) {
+    if (this.isEditMode && this.data.deeplink) {
       // Ensure options structure exists for editing and convert date strings to Date objects
-      const permalinkData = {
-        ...this.data.permalink,
+      const deeplinkData = {
+        ...this.data.deeplink,
         options: {
           activation: {
-            activationInstant: this.data.permalink.options?.activation?.activationInstant
-              ? this.convertISOToDatetimeLocal(this.data.permalink.options.activation.activationInstant)
+            activationInstant: this.data.deeplink.options?.activation?.activationInstant
+              ? this.convertISOToDatetimeLocal(this.data.deeplink.options.activation.activationInstant)
               : null,
-            targetUrlBeforeActivation: this.data.permalink.options?.activation?.targetUrlBeforeActivation || ''
+            targetUrlBeforeActivation: this.data.deeplink.options?.activation?.targetUrlBeforeActivation || ''
           },
-          landing: this.data.permalink.options?.landing || { templateId: '' },
+          landing: this.data.deeplink.options?.landing || { templateId: '' },
           expiry: {
-            expiryDate: this.data.permalink.options?.expiry?.expiryDate
-              ? new Date(this.data.permalink.options.expiry.expiryDate)
+            expiryDate: this.data.deeplink.options?.expiry?.expiryDate
+              ? new Date(this.data.deeplink.options.expiry.expiryDate)
               : null
-          }
+          },
+          password: this.data.deeplink.options?.password
         }
       };
-      this.permalinkForm.patchValue(permalinkData);
+      this.deeplinkForm.patchValue(deeplinkData);
     }
   }
 
   private initializeForm() {
-    this.permalinkForm = this.fb.group({
+    this.deeplinkForm = this.fb.group({
       id: [null],
       targetUrl: ['', [Validators.required, Validators.pattern(/^.+:\/\/.+/)]],
       domainId: [this.authService.getFavoriteDomain() || '', Validators.required],
       slug: ['', [], [this.slugAvailabilityValidator()]],
-      type: [PermalinkType.SIMPLE],
+      type: [DeeplinkType.SIMPLE],
       // Options group
       options: this.fb.group({
         activation: this.fb.group({
@@ -116,14 +117,17 @@ export class PermalinkModal implements OnInit {
         }),
         expiry: this.fb.group({
           expiryDate: [null]
+        }),
+        password: this.fb.group({
+          password: ['']
         })
       })
     });
 
     // Watch for type changes to show/hide landing options
-    this.permalinkForm.get('type')?.valueChanges.subscribe(type => {
-      const landingGroup = this.permalinkForm.get('options.landing');
-      if (type === PermalinkType.WITH_LANDING) {
+    this.deeplinkForm.get('type')?.valueChanges.subscribe(type => {
+      const landingGroup = this.deeplinkForm.get('options.landing');
+      if (type === DeeplinkType.WITH_LANDING) {
         landingGroup?.get('templateId')?.setValidators([Validators.required]);
       } else {
         landingGroup?.get('templateId')?.clearValidators();
@@ -133,8 +137,8 @@ export class PermalinkModal implements OnInit {
     });
 
     // Watch for domain changes to re-validate slug
-    this.permalinkForm.get('domainId')?.valueChanges.subscribe(() => {
-      const slugControl = this.permalinkForm.get('slug');
+    this.deeplinkForm.get('domainId')?.valueChanges.subscribe(() => {
+      const slugControl = this.deeplinkForm.get('slug');
       if (slugControl?.value) {
         slugControl.updateValueAndValidity();
       }
@@ -142,8 +146,8 @@ export class PermalinkModal implements OnInit {
   }
 
   onSubmit() {
-    if (this.permalinkForm.valid) {
-      const formValue = this.permalinkForm.value;
+    if (this.deeplinkForm.valid) {
+      const formValue = this.deeplinkForm.value;
 
       // Convert dates to proper format if they exist
       if (formValue.options?.activation?.activationInstant) {
@@ -191,6 +195,11 @@ export class PermalinkModal implements OnInit {
     if (options.expiry && (!options.expiry.expiryDate || options.expiry.expiryDate === null)) {
       delete options.expiry;
     }
+
+    // Remove empty password
+    if (!options.password || !options.password.password || options.password.password.trim() === '') {
+      delete options.password;
+    }
   }
 
   onCancel() {
@@ -198,11 +207,11 @@ export class PermalinkModal implements OnInit {
   }
 
   get isWithLanding() {
-    return this.permalinkForm.get('type')?.value === PermalinkType.WITH_LANDING;
+    return this.deeplinkForm.get('type')?.value === DeeplinkType.WITH_LANDING;
   }
 
   get hasActivationOptions() {
-    const activation = this.permalinkForm.get('options.activation');
+    const activation = this.deeplinkForm.get('options.activation');
     return activation?.get('activationInstant')?.value || activation?.get('targetUrlBeforeActivation')?.value;
   }
 

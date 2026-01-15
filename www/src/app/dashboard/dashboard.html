@@ -64,9 +64,9 @@
         <h1 class="hero-title">Welcome to {{ title() }}</h1>
         <p class="hero-subtitle">Professional permalink management for modern teams</p>
         <div class="hero-actions">
-          <button mat-raised-button color="primary" class="cta-button" (click)="openCreatePermalinkModal()">
+          <button mat-raised-button color="primary" class="cta-button" (click)="openCreateDeeplinkModal()">
             <mat-icon>add</mat-icon>
-            Create Permalink
+            Create Deeplink
           </button>
           @if (isAdmin) {
           <button mat-stroked-button class="secondary-button" (click)="openManageDomains()">
@@ -78,11 +78,11 @@
       </div>
     </section>
 
-    <!-- Permalinks Management Section -->
+    <!-- Deeplinks Management Section -->
     <section class="permalinks-section">
       <div class="container">
         <div class="section-header">
-          <h2 class="section-title">Active Permalinks</h2>
+          <h2 class="section-title">Active Deeplinks</h2>
           <button mat-icon-button (click)="refreshData()" matTooltip="Refresh data">
             <mat-icon>refresh</mat-icon>
           </button>
@@ -106,13 +106,13 @@
           </mat-form-field>
 
           <div class="results-info">
-            @if (loadingPermalinks && !!selectedDomainId) {
+            @if (loadingDeeplinks && !!selectedDomainId) {
               <span class="loading-text">Loading...</span>
             } @else if (!selectedDomainId) {
               Select a domain
             } @else {
               <span class="results-count">
-                {{ totalPermalinks }} permalinks
+                {{ totalDeeplinks }} permalinks
                 @if (selectedDomainId) {
                   for {{ getDomainName(selectedDomainId) }}
                 } @else if (domains.length > 0) {
@@ -125,7 +125,7 @@
 
         <!-- Table -->
         <div class="table-container">
-          @if (loadingPermalinks && selectedDomainId) {
+          @if (loadingDeeplinks && selectedDomainId) {
             <div class="loading-state">
               <mat-spinner diameter="40"></mat-spinner>
               <p>Loading permalinks...</p>
@@ -144,24 +144,24 @@
                 </mat-select>
               </mat-form-field>
             </div>
-          } @else if (displayedPermalinks.length === 0 && totalPermalinks === 0) {
+          } @else if (displayedDeeplinks.length === 0 && totalDeeplinks === 0) {
             <div class="empty-state">
               <mat-icon>link_off</mat-icon>
               <h3>No permalinks found</h3>
               <p>Create your first permalink to get started.</p>
-              <button mat-raised-button color="primary" (click)="openCreatePermalinkModal()">
+              <button mat-raised-button color="primary" (click)="openCreateDeeplinkModal()">
                 <mat-icon>add</mat-icon>
-                Create Permalink
+                Create Deeplink
               </button>
             </div>
-          } @else if (displayedPermalinks.length === 0) {
+          } @else if (displayedDeeplinks.length === 0) {
             <div class="empty-state">
               <mat-icon>search_off</mat-icon>
               <h3>No matches found</h3>
               <p>Try adjusting your search criteria or filters.</p>
             </div>
           } @else {
-            <table mat-table [dataSource]="displayedPermalinks" class="permalinks-table">
+            <table mat-table [dataSource]="displayedDeeplinks" class="permalinks-table">
               <!-- Shortened URL Column -->
               <ng-container matColumnDef="shortenedUrl">
                 <th mat-header-cell *matHeaderCellDef>Short URL</th>
@@ -199,7 +199,7 @@
                 <th mat-header-cell *matHeaderCellDef>Status</th>
                 <td mat-cell *matCellDef="let permalink">
                   <div class="status-cell" [matTooltip]="getOptionsTooltip(permalink)">
-                    @let status = getPermalinkStatus(permalink);
+                    @let status = getDeeplinkStatus(permalink);
                     <mat-icon [class]="'status-icon status-' + status.color">{{ status.icon }}</mat-icon>
                     <span [class]="'status-text status-' + status.color">{{ status.status }}</span>
                     @if (hasLandingPage(permalink)) {
@@ -243,7 +243,7 @@
                         <span>Open target URL</span>
                       </button>
                       <mat-divider></mat-divider>
-                      <button mat-menu-item (click)="deletePermalink(permalink)" class="delete-action">
+                      <button mat-menu-item (click)="deleteDeeplink(permalink)" class="delete-action">
                         <mat-icon>delete</mat-icon>
                         <span>Delete</span>
                       </button>
@@ -257,9 +257,9 @@
             </table>
 
             <!-- Pagination -->
-            @if (totalPermalinks > 0) {
+            @if (totalDeeplinks > 0) {
               <mat-paginator
-                [length]="totalPermalinks"
+                [length]="totalDeeplinks"
                 [pageSize]="pageSize"
                 [pageSizeOptions]="pageSizeOptions"
                 [pageIndex]="currentPage"

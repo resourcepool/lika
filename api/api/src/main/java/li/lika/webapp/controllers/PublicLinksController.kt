@@ -1,7 +1,9 @@
 package li.lika.webapp.controllers
 
 import li.lika.common.exceptions.InvalidHostException
+import li.lika.common.models.Deeplink
 import li.lika.common.models.DeeplinkType
+import li.lika.common.models.isPasswordProtected
 import li.lika.core.services.DomainService
 import li.lika.core.services.DeeplinkService
 import li.lika.security.props.SecurityProperties
@@ -42,15 +44,25 @@ class PublicLinksController(
 
         val pl = deeplinkService.findOneByHostAndSlug(host!!, rootDeeplink)
         if (pl.type == DeeplinkType.SIMPLE) {
-            return ModelAndView("redirect:${pl.targetUrl}", model)
+            if (pl.isPasswordProtected()) {
+                return forwardToProtectedPage(pl)
+            }
+            return redirectToTarget(pl, model)
         }
+        // Redirect to Landing page
         val domain = domainService.findOneByHostAndOwnerId(pl.host, pl.ownerId) ?: throw InvalidHostException()
-        if (pl.type == DeeplinkType.PROTECTED && domain.landingBaseUrl.isNullOrBlank()) {
-            return ModelAndView("protected")
-                .addObject("l", pl.slug)
-                .addObject("accessToken", properties.defaultGlobalAccessToken)
-        }
         return ModelAndView("redirect:${domain.landingBaseUrl}?l=${pl.slug}", model)
+    }
+
+    private fun redirectToTarget(
+        pl: Deeplink,
+        model: ModelMap
+    ): ModelAndView = ModelAndView("redirect:${pl.targetUrl}", model)
+
+    private fun forwardToProtectedPage(pl: Deeplink): ModelAndView {
+        return ModelAndView("protected")
+            .addObject("l", pl.slug)
+            .addObject("accessToken", properties.defaultGlobalAccessToken)
     }
 
     private fun sanitizeHost(host: String?, forwardedHost: String?): String? {
@@ -64,3 +76,4 @@ class PublicLinksController(
     }
 
 }
+

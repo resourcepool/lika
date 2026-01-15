@@ -1,16 +1,16 @@
-<h2 mat-dialog-title>{{ isEditMode ? 'Edit Permalink' : 'Create Permalink' }}</h2>
+<h2 mat-dialog-title>{{ isEditMode ? 'Edit Deeplink' : 'Create Deeplink' }}</h2>
 
 <mat-dialog-content>
-  <form [formGroup]="permalinkForm" class="permalink-form">
+  <form [formGroup]="deeplinkForm" class="deeplink-form">
 
     <!-- Target URL -->
     <mat-form-field appearance="outline" class="full-width">
       <mat-label>Target URL</mat-label>
       <input matInput formControlName="targetUrl" placeholder="https://example.com/page" type="url">
-      @if (permalinkForm.get('targetUrl')?.hasError('required')) {
+      @if (deeplinkForm.get('targetUrl')?.hasError('required')) {
         <mat-error>Target URL is required</mat-error>
       }
-      @if (permalinkForm.get('targetUrl')?.hasError('pattern')) {
+      @if (deeplinkForm.get('targetUrl')?.hasError('pattern')) {
         <mat-error>Please enter a valid URL (http:// or https://)</mat-error>
       }
     </mat-form-field>
@@ -25,7 +25,7 @@
           </mat-option>
         }
       </mat-select>
-      @if (permalinkForm.get('domainId')?.hasError('required')) {
+      @if (deeplinkForm.get('domainId')?.hasError('required')) {
         <mat-error>Domain is required</mat-error>
       }
     </mat-form-field>
@@ -33,15 +33,15 @@
     <!-- Type Selection -->
     <!--
     <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Permalink Type</mat-label>
+      <mat-label>Deeplink Type</mat-label>
       <mat-select formControlName="type">
-        @for (type of permalinkTypes; track type) {
+        @for (type of deeplinkTypes; track type) {
           <mat-option [value]="type">
             {{ type === 'SIMPLE' ? 'Simple Redirect' : 'With Landing Page' }}
           </mat-option>
         }
       </mat-select>
-      @if (permalinkForm.get('type')?.hasError('required')) {
+      @if (deeplinkForm.get('type')?.hasError('required')) {
         <mat-error>Type is required</mat-error>
       }
     </mat-form-field>
@@ -51,7 +51,7 @@
       <mat-label>Custom Slug (optional)</mat-label>
       <input matInput formControlName="slug" placeholder="my-custom-slug">
       <mat-hint>Leave empty to auto-generate</mat-hint>
-      @if (permalinkForm.get('slug')?.hasError('slugUnavailable')) {
+      @if (deeplinkForm.get('slug')?.hasError('slugUnavailable')) {
         <mat-error>This slug is already taken</mat-error>
       }
     </mat-form-field>
@@ -59,6 +59,16 @@
     <!-- Options Section -->
     <div formGroupName="options" class="options-section">
       <h3 class="section-title">Advanced Options</h3>
+
+      <!-- Password Protection -->
+      <div formGroupName="password" class="options-group">
+        <h4 class="group-title">Security Settings</h4>
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Password Protection (optional)</mat-label>
+          <input matInput type="password" formControlName="password" placeholder="Enter password to protect this deeplink">
+          <mat-hint>Leave empty for no password protection</mat-hint>
+        </mat-form-field>
+      </div>
 
       <!-- Landing Options (only shown for WITH_LANDING type) -->
       <!--
@@ -68,7 +78,7 @@
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Template ID</mat-label>
             <input matInput formControlName="templateId" placeholder="landing-template-1">
-            @if (permalinkForm.get('options.landing.templateId')?.hasError('required')) {
+            @if (deeplinkForm.get('options.landing.templateId')?.hasError('required')) {
               <mat-error>Template ID is required for landing pages</mat-error>
             }
           </mat-form-field>
@@ -82,7 +92,7 @@
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Activation Date & Time (optional)</mat-label>
           <input matInput type="datetime-local" formControlName="activationInstant">
-          <mat-hint>When should this permalink become active?</mat-hint>
+          <mat-hint>When should this deeplink become active?</mat-hint>
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="full-width">
@@ -101,7 +111,7 @@
           <input matInput [matDatepicker]="expiryPicker" formControlName="expiryDate">
           <mat-datepicker-toggle matIconSuffix [for]="expiryPicker"></mat-datepicker-toggle>
           <mat-datepicker #expiryPicker></mat-datepicker>
-          <mat-hint>When should this permalink expire?</mat-hint>
+          <mat-hint>When should this deeplink expire?</mat-hint>
         </mat-form-field>
       </div>
     </div>
@@ -113,7 +123,7 @@
   <button mat-button (click)="onCancel()">Cancel</button>
   <button mat-raised-button color="primary"
           (click)="onSubmit()"
-          [disabled]="permalinkForm.invalid">
-    {{ isEditMode ? 'Update' : 'Create' }} Permalink
+          [disabled]="deeplinkForm.invalid">
+    {{ isEditMode ? 'Update' : 'Create' }} Deeplink
   </button>
 </mat-dialog-actions>

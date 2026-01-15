@@ -40,6 +40,12 @@ data class Deeplink(
     var options: Options = Options()
 )
 
+fun Deeplink.isPasswordProtected(): Boolean {
+    return !(options.password?.password.isNullOrBlank())
+
+}
+
+
 fun Deeplink.hideTarget(): Deeplink {
     return this.copy(
         id = this.id,

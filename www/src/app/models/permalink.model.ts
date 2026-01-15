@@ -1,5 +1,5 @@
 // Enums
-export enum PermalinkType {
+export enum DeeplinkType {
   SIMPLE = 'SIMPLE',
   WITH_LANDING = 'WITH_LANDING'
 }
@@ -28,11 +28,14 @@ export interface LandingOptions {
 export interface ExpiryOptions {
   expiryDate?: string; // ISO string date (LocalDate)
 }
-
+export interface PasswordOptions {
+  password?: string;
+}
 export interface Options {
   activation?: ActivationOptions;
   landing?: LandingOptions;
   expiry?: ExpiryOptions;
+  password?: PasswordOptions;
 }
 
 // DTO versions for API requests (with string dates)
@@ -49,21 +52,26 @@ export interface ExpiryOptionsDto {
   expiryDate?: string;
 }
 
+export interface PasswordOptionsDto {
+  password?: string;
+}
+
 export interface OptionsDto {
   activation?: ActivationOptionsDto;
   landing?: LandingOptionsDto;
   expiry?: ExpiryOptionsDto;
+  password?: PasswordOptionsDto;
 }
 
 // Core Models
-export interface Permalink {
+export interface Deeplink {
   id: string;
   host: string;
   ownerId: string;
   slug?: string;
   shortenedUrl: string;
   targetUrl: string;
-  type: PermalinkType;
+  type: DeeplinkType;
   createdDateTime: string;
   lastUpdateDateTime: string;
   options: Options;
@@ -73,12 +81,12 @@ export interface Permalink {
   createdAt?: string; // Alias for createdDateTime for easier usage
 }
 
-export interface PermalinkCreator {
+export interface DeeplinkCreator {
   id?: string;
   targetUrl: string;
   domainId: string;
   slug?: string;
-  type: PermalinkType;
+  type: DeeplinkType;
   options: OptionsDto;
 }
 
@@ -139,10 +147,10 @@ export interface PageResponse<T> {
 }
 
 // Archive Models
-export interface PermalinkArchiveItem {
+export interface DeeplinkArchiveItem {
   targetUrl: string;
   slug?: string;
-  type: PermalinkType;
+  type: DeeplinkType;
   options: OptionsDto;
 }
 
@@ -151,7 +159,7 @@ export interface DomainArchiveItem {
   host: string;
   apiBaseUrl: string;
   landingBaseUrl?: string;
-  links: PermalinkArchiveItem[];
+  links: DeeplinkArchiveItem[];
 }
 
 export interface AccountArchiveItem {
