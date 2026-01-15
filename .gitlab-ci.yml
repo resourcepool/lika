@@ -27,7 +27,7 @@ cache:
 # Build API artifacts
 build-api-memory:
   stage: build
-  image: openjdk:21-jdk
+  image: eclipse-temurin:21-jdk
   script:
     - cd api
     - chmod +x gradlew
@@ -42,7 +42,7 @@ build-api-memory:
 
 build-api-mongo:
   stage: build
-  image: openjdk:21-jdk
+  image: eclipse-temurin:21-jdk
   script:
     - cd api
     - chmod +x gradlew
@@ -57,7 +57,7 @@ build-api-mongo:
 
 build-api-sqlite:
   stage: build
-  image: openjdk:21-jdk
+  image: eclipse-temurin:21-jdk
   script:
     - cd api
     - chmod +x gradlew
