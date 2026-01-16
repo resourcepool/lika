@@ -30,4 +30,6 @@ data class DeeplinkCreator(
     var domainId: String = "",
     var slug: String? = null,
     var type: DeeplinkType = DeeplinkType.SIMPLE,
-    var options: OptionsDto = OptionsDto())
+    var options: OptionsDto = OptionsDto(),
+    var metadata: Map<String, String> = HashMap()
+)

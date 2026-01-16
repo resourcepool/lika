@@ -1,5 +1,6 @@
 package li.lika.core.persistence.models
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.Index
@@ -35,7 +36,8 @@ class DeeplinkDb() {
         optionActivationTargetUrlBeforeActivation: String?,
         optionExpiryDate: LocalDate?,
         optionLandingTemplateId: String?,
-        optionPassword: String?
+        optionPassword: String?,
+        metadata: String?
     ) : this() {
         this.id = id
         this.host = host
@@ -52,6 +54,7 @@ class DeeplinkDb() {
         this.optionLandingTemplateId = optionLandingTemplateId
         this.optionPassword = optionPassword
         this.searchString = "$slug $targetUrl $host"
+        this.metadata = metadata
     }
 
     @Id
@@ -80,10 +83,12 @@ class DeeplinkDb() {
     // Password options
     var optionPassword: String? = null
 
+    var metadata: String? = null
+
     private var searchString: String = ""
 
 
-    fun toDomain(): Deeplink {
+    fun toDomain(mapper: ObjectMapper): Deeplink {
         return Deeplink(
             id!!, host, ownerId, slug, shortenedUrl, targetUrl, type,
             createdDateTime.atZone(ZoneOffset.UTC),
@@ -109,13 +114,14 @@ class DeeplinkDb() {
                     else -> PasswordProtectedOptions(optionPassword)
                 }
 
-            )
+            ),
+            metadata = if (metadata.isNullOrBlank()) emptyMap() else mapper.readerForMapOf(String::class.java).readValue(metadata)
         )
     }
 
 }
 
-fun Deeplink.toDb(): DeeplinkDb {
+fun Deeplink.toDb(mapper: ObjectMapper): DeeplinkDb {
     return DeeplinkDb(
         id,
         host,
@@ -130,7 +136,8 @@ fun Deeplink.toDb(): DeeplinkDb {
         options.activation?.targetUrlBeforeActivation,
         options.expiry?.expiryDate,
         options.landing?.templateId,
-        options.password?.password
+        options.password?.password,
+        if (metadata.isEmpty()) { null } else mapper.writeValueAsString(metadata)
     )
 }
 

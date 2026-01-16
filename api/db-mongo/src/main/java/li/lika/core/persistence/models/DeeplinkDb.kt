@@ -34,7 +34,9 @@ data class DeeplinkDb(
     // Landing options
     var optionLandingTemplateId: String? = null,
     // Password options
-    var optionPassword: String? = null
+    var optionPassword: String? = null,
+    // Optional metadata
+    var metadata: HashMap<String, String>? = null
 ) {
 
     fun toPermalink(): Deeplink {
@@ -62,7 +64,8 @@ data class DeeplinkDb(
                     null -> null
                     else -> PasswordProtectedOptions(optionPassword)
                 }
-            )
+            ),
+            metadata = metadata ?: emptyMap()
         )
     }
 
@@ -82,7 +85,8 @@ data class DeeplinkDb(
                 pl.options.activation?.targetUrlBeforeActivation,
                 pl.options.expiry?.expiryDate,
                 pl.options.landing?.templateId,
-                pl.options.password?.password
+                pl.options.password?.password,
+                HashMap(pl.metadata)
             )
         }
     }

@@ -37,7 +37,8 @@ data class Deeplink(
     var type: DeeplinkType = DeeplinkType.SIMPLE,
     var createdDateTime: ZonedDateTime = ZonedDateTime.now(),
     var lastUpdateDateTime: ZonedDateTime = ZonedDateTime.now(),
-    var options: Options = Options()
+    var options: Options = Options(),
+    var metadata: Map<String, String> = HashMap()
 )
 
 fun Deeplink.isPasswordProtected(): Boolean {
@@ -62,7 +63,8 @@ fun Deeplink.hideTarget(): Deeplink {
             landing = options.landing,
             expiry = options.expiry,
             password = null // should not send password
-        ))
+        ),
+        metadata = this.metadata)
 }
 
 
@@ -82,5 +84,6 @@ fun Deeplink.safe(): Deeplink {
             landing = options.landing,
             expiry = options.expiry,
             password = null // should not send password
-        ))
+        ),
+        metadata = this.metadata)
 }

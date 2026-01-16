@@ -89,6 +89,7 @@ class DeeplinkService(
             l.targetUrl,
             l.type
         )
+        pl.metadata = l.metadata
         if (l.type == DeeplinkType.WITH_LANDING && l.options.landing?.templateId != null) {
             pl.options.landing = LandingOptions(l.options.landing!!.templateId)
         }
