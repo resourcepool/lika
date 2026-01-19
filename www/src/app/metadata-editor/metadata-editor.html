@@ -1,0 +1,31 @@
+<div class="metadata-editor">
+  <div class="metadata-header">
+    <h4 class="group-title">Metadata (optional)</h4>
+    <button mat-button color="primary" type="button" (click)="addEntry()">
+      <mat-icon>add</mat-icon>
+      Add Entry
+    </button>
+  </div>
+
+  @if (entries.length === 0) {
+    <p class="empty-message">No metadata entries. Click "Add Entry" to add key-value pairs.</p>
+  }
+
+  @for (entry of entries; track $index) {
+    <div [formGroup]="entry" class="metadata-entry">
+      <mat-form-field appearance="outline" class="key-field">
+        <mat-label>Key</mat-label>
+        <input matInput formControlName="key" placeholder="e.g., campaign" (input)="onEntryChange()">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="value-field">
+        <mat-label>Value</mat-label>
+        <input matInput formControlName="value" placeholder="e.g., summer-2024" (input)="onEntryChange()">
+      </mat-form-field>
+
+      <button mat-icon-button color="warn" type="button" (click)="removeEntry($index)" class="delete-button">
+        <mat-icon>delete</mat-icon>
+      </button>
+    </div>
+  }
+</div>

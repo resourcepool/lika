@@ -11,6 +11,7 @@ import { CommonModule } from '@angular/common';
 import { DeeplinkCreator, DeeplinkType, Domain, OptionsDto } from '../models/permalink.model';
 import { AuthService } from '../services/auth';
 import { DeeplinkService } from '../services/permalink';
+import { MetadataEditorComponent } from '../metadata-editor/metadata-editor';
 import { Observable, of, timer } from 'rxjs';
 import { map, catchError, switchMap, distinctUntilChanged, debounceTime } from 'rxjs/operators';
 
@@ -25,7 +26,8 @@ import { map, catchError, switchMap, distinctUntilChanged, debounceTime } from '
     MatSelectModule,
     MatButtonModule,
     MatDatepickerModule,
-    MatCheckboxModule
+    MatCheckboxModule,
+    MetadataEditorComponent
   ],
   templateUrl: './permalink-modal.html',
   styleUrl: './permalink-modal.scss'
@@ -106,6 +108,7 @@ export class DeeplinkModal implements OnInit {
       domainId: [this.authService.getFavoriteDomain() || '', Validators.required],
       slug: ['', [], [this.slugAvailabilityValidator()]],
       type: [DeeplinkType.SIMPLE],
+      metadata: [{}],
       // Options group
       options: this.fb.group({
         activation: this.fb.group({

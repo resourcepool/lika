@@ -75,6 +75,7 @@ export interface Deeplink {
   createdDateTime: string;
   lastUpdateDateTime: string;
   options: Options;
+  metadata: Record<string, string>;
   // Extended properties for UI
   domainHost?: string;
   domainId?: string;
@@ -88,6 +89,7 @@ export interface DeeplinkCreator {
   slug?: string;
   type: DeeplinkType;
   options: OptionsDto;
+  metadata: Record<string, string>;
 }
 
 export interface Domain {
@@ -152,6 +154,7 @@ export interface DeeplinkArchiveItem {
   slug?: string;
   type: DeeplinkType;
   options: OptionsDto;
+  metadata: Record<string, string>;
 }
 
 export interface DomainArchiveItem {
