@@ -35,6 +35,13 @@ class ApiLinksController(private val deeplinkService: DeeplinkService, private v
         return deeplinkService.getPage(owner.getId(), domainId, req)
     }
 
+    @GetMapping("{id}")
+    fun getOneById(@RequestParam domainId: String, @PathVariable id: String, @AuthenticationPrincipal p: Principal): Deeplink {
+        val owner = p as AccessTokenAuthentication
+        assertResourceReadAuthorized(owner, domainId)
+        return deeplinkService.findOne(id)?: throw PermalinkNotFoundException()
+    }
+
     @GetMapping("slug/{slug}")
     fun assertSlugAvailable(@PathVariable slug: String, @RequestParam domainId: String, @AuthenticationPrincipal p: Principal) {
         val owner = p as AccessTokenAuthentication

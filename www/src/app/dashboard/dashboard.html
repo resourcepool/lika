@@ -243,6 +243,10 @@
                         <span>Open target URL</span>
                       </button>
                       <mat-divider></mat-divider>
+                      <button mat-menu-item (click)="openEditDeeplinkModal(permalink)">
+                        <mat-icon>edit</mat-icon>
+                        <span>Edit</span>
+                      </button>
                       <button mat-menu-item (click)="deleteDeeplink(permalink)" class="delete-action">
                         <mat-icon>delete</mat-icon>
                         <span>Delete</span>

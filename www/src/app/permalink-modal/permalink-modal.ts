@@ -7,6 +7,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatIconModule } from '@angular/material/icon';
 import { CommonModule } from '@angular/common';
 import { DeeplinkCreator, DeeplinkType, Domain, OptionsDto } from '../models/permalink.model';
 import { AuthService } from '../services/auth';
@@ -27,6 +28,7 @@ import { map, catchError, switchMap, distinctUntilChanged, debounceTime } from '
     MatButtonModule,
     MatDatepickerModule,
     MatCheckboxModule,
+    MatIconModule,
     MetadataEditorComponent
   ],
   templateUrl: './permalink-modal.html',
@@ -42,6 +44,7 @@ export class DeeplinkModal implements OnInit {
   domains: Domain[] = [];
   deeplinkTypes = Object.values(DeeplinkType);
   isEditMode = false;
+  hidePassword = true;
 
   private slugAvailabilityValidator(): AsyncValidatorFn {
     return (control: AbstractControl): Observable<ValidationErrors | null> => {

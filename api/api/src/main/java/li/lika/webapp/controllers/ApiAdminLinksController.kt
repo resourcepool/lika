@@ -45,6 +45,13 @@ class ApiAdminLinksController(private val accountService: AccountService, privat
         return deeplinkService.getPageAdmin(domainId, req)
     }
 
+    @GetMapping("{id}")
+    fun getOneById(@RequestParam domainId: String, @PathVariable id: String, @AuthenticationPrincipal p: Principal): Deeplink {
+        val owner = p as AccessTokenAuthentication
+        assertResourceReadAuthorized(owner, domainId)
+        return deeplinkService.findOne(id)?: throw PermalinkNotFoundException()
+    }
+
     @GetMapping("slug/{slug}")
     fun assertSlugAvailable(@PathVariable slug: String, @RequestParam domainId: String, @AuthenticationPrincipal p: Principal) {
         val owner = p as AccessTokenAuthentication
@@ -66,7 +73,7 @@ class ApiAdminLinksController(private val accountService: AccountService, privat
         val owner = p as AccessTokenAuthentication
         assertResourceWriteAuthorized(owner, pl.domainId)
         val domain = domainService.findById(pl.domainId)?: throw InvalidDomainException()
-        return deeplinkService.save(pl, domain.ownerId!!)
+        return deeplinkService.save(pl, domain.ownerId?:owner.getId())
     }
 
     @DeleteMapping("/{id}")

@@ -244,6 +244,75 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  openEditDeeplinkModal(deeplink: Deeplink) {
+    if (!deeplink.slug) {
+      this.snackBar.open('Cannot edit a deeplink without a slug', 'Close', {
+        duration: 3000
+      });
+      return;
+    }
+
+    // Fetch the latest deeplink data using the authenticated endpoint
+    this.deeplinkService.getDeeplinkById(deeplink.id, deeplink.domainId!, this.isAdmin).subscribe({
+      next: (fullDeeplink) => {
+        // Convert Deeplink to DeeplinkCreator format for the modal
+        const deeplinkData: DeeplinkCreator = {
+          id: fullDeeplink.id,
+          targetUrl: fullDeeplink.targetUrl,
+          domainId: deeplink.domainId || '',
+          slug: fullDeeplink.slug,
+          type: fullDeeplink.type,
+          options: {
+            activation: fullDeeplink.options?.activation,
+            landing: fullDeeplink.options?.landing,
+            expiry: fullDeeplink.options?.expiry,
+            password: fullDeeplink.options?.password
+          },
+          metadata: fullDeeplink.metadata || {}
+        };
+
+        const dialogRef = this.dialog.open(DeeplinkModal, {
+          width: '600px',
+          data: {
+            domains: this.domains,
+            deeplink: deeplinkData
+          }
+        });
+
+        dialogRef.afterClosed().subscribe(result => {
+          if (result) {
+            this.updateDeeplink(result);
+          }
+        });
+      },
+      error: (error: ApiError) => {
+        this.snackBar.open(`Failed to load deeplink details: ${error.message}`, 'Close', {
+          duration: 5000
+        });
+        console.error('Failed to load deeplink for editing:', error);
+      }
+    });
+  }
+
+  private updateDeeplink(deeplinkData: DeeplinkCreator) {
+    this.deeplinkService.updateDeeplink(deeplinkData, this.isAdmin).subscribe({
+      next: (deeplink) => {
+        this.snackBar.open(`Deeplink updated successfully: ${deeplink.shortenedUrl}`, 'Close', {
+          duration: 5000
+        });
+        console.log('Deeplink updated:', deeplink);
+        // Refresh the deeplink list
+        this.loadDeeplinks();
+      },
+      error: (error: ApiError) => {
+        this.snackBar.open(`Failed to update deeplink: ${error.message}`, 'Close', {
+          duration: 5000
+        });
+        console.error('Failed to update deeplink:', error);
+      }
+    });
+  }
+
   openManageDomains() {
     this.router.navigate(['/admin/domains']);
   }

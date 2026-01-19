@@ -65,7 +65,10 @@
         <h4 class="group-title">Security Settings</h4>
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Password Protection (optional)</mat-label>
-          <input matInput type="password" formControlName="password" placeholder="Enter password to protect this deeplink">
+          <input matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password" placeholder="Enter password to protect this deeplink">
+          <button mat-icon-button matIconSuffix type="button" (click)="hidePassword = !hidePassword" [attr.aria-label]="'Hide password'" [attr.aria-pressed]="hidePassword">
+            <mat-icon>{{hidePassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+          </button>
           <mat-hint>Leave empty for no password protection</mat-hint>
         </mat-form-field>
       </div>

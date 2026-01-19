@@ -46,6 +46,16 @@ export class DeeplinkService {
   }
 
   /**
+   * Get a single deeplink by ID
+   */
+  getDeeplinkById(id: string, domainId: string, admin = false): Observable<Deeplink> {
+    return this.http.get<Deeplink>(`${admin ? this.baseUrlAdmin : this.baseUrl}/${id}?domainId=${domainId}`)
+      .pipe(
+        catchError(this.handleError)
+      );
+  }
+
+  /**
    * Check if a slug is available for a domain
    */
   checkSlugAvailability(slug: string, domainId: string, admin = false): Observable<void> {

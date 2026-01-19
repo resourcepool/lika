@@ -73,11 +73,6 @@ class DeeplinkService(
             if (l.slug.isNullOrBlank()) {
                 l.slug = transactionHandler.runInTransaction { findValidSlug(domain.host) }
             }
-        } else {
-            val existingPl = transactionHandler.runInTransaction { assertPermalinkExists(id) }
-            if (existingPl.slug != l.slug) {
-                throw SlugImmutableException()
-            }
         }
         val shortenedLink = "${domain.apiBaseUrl}/${l.slug}"
         val pl = Deeplink(

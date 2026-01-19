@@ -4,7 +4,7 @@ lika:
       id: "1a92d0b6-a77c-4546-8bd5-1f99712cddfe"
       apiBaseUrl: "http://localhost:8080"
     - host: "127.0.0.1:8080"
-      apiBaseUrl: "https://localhost:8080"
+      apiBaseUrl: "http://127.0.0.1:8080"
       landingBaseUrl: "http://localhost:4201"
   defaultLinks:
     - slug: test
