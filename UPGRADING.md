@@ -1,5 +1,40 @@
 # Upgrading Lika
 
+## 0.5.x → 0.6.0
+
+The web interface is rebuilt with Next.js. The image keeps its name (`<registry>/<project>/www`), its port (80) and its `/health` endpoint, but it is now a Node.js server instead of static files served by nginx: the browser no longer calls the API directly.
+
+### Configuration of the `www` image
+
+| Before | Now |
+|---|---|
+| `API_BASE_URL`: API URL as seen **by the browser** | `LIKA_API_URL`: API URL as seen **by the web container**, e.g. `http://lika-api:8080` on a Docker network. `API_BASE_URL` is still read as a fallback, with a deprecation warning. |
+| `ENVIRONMENT_NAME`, `PRODUCTION`, `VERSION` | Not used anymore |
+| — | `LIKA_SESSION_SECRET` (**required**): random string of at least 32 characters, e.g. `openssl rand -base64 48`. Keep it stable: changing it signs everyone out. |
+
+The container exits on startup if `LIKA_SESSION_SECRET` or `LIKA_API_URL` is missing.
+
+```yaml
+# docker-compose example
+services:
+  api:
+    image: <registry>/<project>/api:v0.6.0-sqlite
+  www:
+    image: <registry>/<project>/www:v0.6.0
+    ports: ["8081:80"]
+    environment:
+      LIKA_API_URL: http://api:8080
+      LIKA_SESSION_SECRET: ${LIKA_SESSION_SECRET}
+```
+
+### Behavior
+
+- Sign-in takes the read-write API key once. It is kept in an encrypted, httpOnly cookie and never exposed to browser JavaScript. The session lasts as long as the browser visits at least once every 400 days, until sign-out, or until the key is regenerated or deleted.
+- Behind a TLS-terminating reverse proxy, forward `X-Forwarded-Proto` so the cookie is marked `Secure`.
+- The API no longer needs CORS for the web interface: only the web container calls it.
+- The GitLab Pages deployment of the web interface is removed: it needs a server now.
+- The password and "link not found" pages served by the API share the new look.
+
 ## 0.4.x → 0.5.0
 
 The API migrates existing data on first start. Nothing to do by hand, but read the behavior changes below.

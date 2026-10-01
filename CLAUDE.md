@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Lika is an open-source permalink API consisting of two main components:
 - **Backend API** (`api/`): Kotlin/Spring Boot application for permalink management
-- **Frontend Web App** (`www/`): Angular application for the user interface
+- **Frontend Web App** (`web/`): Next.js application for the user interface
 
 ## Development Commands
 
@@ -34,33 +34,19 @@ cd api
 ./gradlew clean
 ```
 
-### Frontend (Angular)
+### Frontend (Next.js)
 ```bash
-# Navigate to web app directory
-cd www
-
-# Install dependencies
+cd web
 npm install
 
-# Start development server
-npm start
-# or
-ng serve
+# Development server (needs a running API, see web/README.md)
+LIKA_API_URL=http://localhost:8080 LIKA_SESSION_SECRET=<32+ random chars> npm run dev
 
-# Build for production
-npm run build
-# or 
-ng build
-
-# Run tests
-npm test
-# or
-ng test
-
-# Build and watch for changes
-npm run watch
-# or
-ng build --watch --configuration development
+npm run lint
+npm run typecheck
+npm test            # Vitest unit tests
+npm run test:e2e    # Playwright, against a running API and web server
+npm run build       # Standalone server in .next/standalone
 ```
 
 ## Architecture
@@ -78,15 +64,14 @@ ng build --watch --configuration development
 - **Caching**: Caffeine cache integration for performance optimization
 
 ### Frontend Architecture
-- **Angular 20**: Modern Angular application using standalone components
-- **Route-based Architecture**: Lazy-loaded components with authentication guards
+- **Next.js (App Router)**, React 19, TypeScript, Tailwind CSS v4, shadcn/ui (Radix), TanStack Query and Table, react-hook-form + zod
+- **Backend for the browser**: the browser never sees the API key. Sign-in stores it in an encrypted httpOnly cookie (`src/lib/session.ts`); `/bff/api/**` (`src/app/bff`) forwards calls to the API with it. `src/proxy.ts` redirects visitors without a session and slides the cookie expiry.
+- **Runtime configuration**: `LIKA_API_URL` and `LIKA_SESSION_SECRET` are read at startup (`src/lib/env.ts`, checked in `src/instrumentation.ts`)
 - **Key Routes**:
-  - `/dashboard`: Main permalink management interface
-  - `/admin/domains`: Domain administration (protected)
-  - `/admin/accounts`: Account management (protected)
-  - `/signin`: Authentication page
-- **Services**: Dedicated services for API communication (auth, permalink, domain, account, search)
-- **Material Design**: Angular Material UI components throughout
+  - `/links`: link management, filtered by domain
+  - `/admin/domains`, `/admin/keys`, `/admin/archive`: admin only (`src/app/(app)/admin/layout.tsx`)
+  - `/signin`: sign-in with an API key
+- `web/AGENTS.md`: this Next.js version differs from older ones; read `web/node_modules/next/dist/docs/` before changing framework code
 
 ### Database Selection
 The API supports three database backends controlled by Gradle properties:
