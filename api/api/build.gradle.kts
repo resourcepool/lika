@@ -53,6 +53,7 @@ dependencies {
         runtimeOnly(project(":db-memory"))
         println("Using Memory as database")
     }
+    implementation("com.fasterxml.jackson.core:jackson-core:${Versions.jackson}")
     implementation("com.fasterxml.jackson.core:jackson-annotations:${Versions.jackson}")
     implementation("com.fasterxml.jackson.core:jackson-databind:${Versions.jackson}")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:${Versions.jackson}")
@@ -68,6 +69,7 @@ dependencies {
     implementation("com.github.ben-manes.caffeine:caffeine:${Versions.caffeine}")
     implementation("com.auth0:java-jwt:${Versions.javaJwt}")
     implementation("io.netty:netty-all")
+    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:${Versions.springdoc}")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.mockk:mockk:${Versions.mockk}")
     testImplementation("org.springframework.security:spring-security-test")

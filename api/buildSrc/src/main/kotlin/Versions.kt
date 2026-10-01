@@ -20,6 +20,7 @@ object Versions {
     const val reactorKotlinExt = "1.2.3"
     const val h2 = "2.3.232"
     const val sqlite = "3.48.0.0"
+    const val springdoc = "2.6.0"
 }
 
 object PluginVersions {

@@ -9,6 +9,7 @@ import li.lika.core.props.CorsProperties
 import li.lika.core.props.LikaProperties
 import li.lika.core.props.ServerProperties
 import li.lika.security.props.SecurityProperties
+import li.lika.webapp.OpenApiConfig
 import li.lika.webapp.SecurityConfig
 import li.lika.webapp.WebConfig
 import org.slf4j.LoggerFactory
@@ -45,7 +46,7 @@ import java.util.concurrent.TimeUnit
     SecurityProperties::class
 )
 @Import(
-    value = [WebConfig::class, SecurityConfig::class]
+    value = [WebConfig::class, SecurityConfig::class, OpenApiConfig::class]
 )
 class LikaApplication {
 
