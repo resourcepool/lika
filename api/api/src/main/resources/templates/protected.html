@@ -110,17 +110,20 @@
         <div class="logo">🔒 Lika</div>
         <div class="subtitle">This link is password protected</div>
 
-        <div class="error-message" id="errorMessage"></div>
+        <div class="error-message" th:classappend="${error} ? 'show'">Invalid password. Please try again.</div>
 
-        <form class="password-form" id="passwordForm">
+        <!-- The password is checked by the server, which redirects to the target on success -->
+        <form class="password-form" method="post" th:action="@{/{slug}(slug=${l})}">
             <input
                 type="password"
                 class="password-input"
-                id="passwordInput"
+                name="password"
                 placeholder="Enter password"
+                autocomplete="current-password"
+                autofocus
                 required
             >
-            <button type="submit" class="submit-button" id="submitButton">
+            <button type="submit" class="submit-button">
                 Ok
             </button>
         </form>
@@ -130,88 +133,5 @@
         </div>
     </div>
 
-    <script th:inline="javascript">
-        // Get slug from model attribute injected by Thymeleaf
-        const slug = /*[[${l}]]*/ '';
-        const accessToken = /*[[${accessToken}]]*/ '';
-        const host = window.location.host;
-
-        // Check if slug is provided
-        if (!slug) {
-            showError('Missing required parameter: slug');
-            document.getElementById('submitButton').disabled = true;
-        }
-
-        // Form submission handler
-        document.getElementById('passwordForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            const password = document.getElementById('passwordInput').value;
-            const submitButton = document.getElementById('submitButton');
-            const errorMessage = document.getElementById('errorMessage');
-
-            // Hide previous errors
-            errorMessage.classList.remove('show');
-
-            // Disable button during request
-            submitButton.disabled = true;
-            submitButton.textContent = 'Checking...';
-
-            try {
-                // Build API URL
-                let apiUrl = `/api/search/slug/${encodeURIComponent(slug)}?accessToken=${accessToken}&password=${encodeURIComponent(password)}`;
-                // Make API request
-                const response = await fetch(apiUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Host': host
-                    },
-                    credentials: 'include' // Include cookies for authentication
-                });
-
-                if (response.status === 401) {
-                    // Wrong password
-                    showError('Invalid password. Please try again.');
-                    submitButton.disabled = false;
-                    submitButton.textContent = 'Ok';
-                    return;
-                }
-
-                if (!response.ok) {
-                    // Other errors
-                    const errorText = await response.text();
-                    showError(`Error: ${response.status} - ${errorText || 'Unknown error'}`);
-                    submitButton.disabled = false;
-                    submitButton.textContent = 'Ok';
-                    return;
-                }
-
-                // Success - parse response and redirect
-                const deeplink = await response.json();
-
-                if (deeplink.targetUrl) {
-                    // Redirect to target URL
-                    window.location.href = deeplink.targetUrl;
-                } else {
-                    showError('No target URL found in response');
-                    submitButton.disabled = false;
-                    submitButton.textContent = 'Ok';
-                }
-
-            } catch (error) {
-                console.error('Error:', error);
-                showError('Failed to verify password. Please try again.');
-                submitButton.disabled = false;
-                submitButton.textContent = 'Ok';
-            }
-        });
-
-        function showError(message) {
-            const errorMessage = document.getElementById('errorMessage');
-            errorMessage.textContent = message;
-            errorMessage.classList.add('show');
-        }
-    </script>
 </body>
 </html>

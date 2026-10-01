@@ -3,13 +3,13 @@ package li.lika.core.services
 import li.lika.common.exceptions.AccountNotFoundException
 import li.lika.common.models.*
 import li.lika.common.persistence.AccountDao
-import li.lika.common.persistence.DomainDao
 import li.lika.common.persistence.DeeplinkDao
-import li.lika.core.props.LikaProperties
-import li.lika.core.services.handlers.TransactionHandler
+import li.lika.common.persistence.DomainDao
+import li.lika.common.utils.StringUtils
 import li.lika.security.props.SecurityProperties
 import org.slf4j.LoggerFactory.getLogger
 import org.springframework.cache.annotation.CacheEvict
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -22,140 +22,206 @@ class ArchiveService(
     private val accountDao: AccountDao,
     private val domainDao: DomainDao,
     private val deeplinkDao: DeeplinkDao,
-    private val deeplinkService: DeeplinkService,
-    private val transactionHandler: TransactionHandler,
-    private val securityProperties: SecurityProperties,
-    private val props: LikaProperties
+    private val passwordEncoder: PasswordEncoder,
+    private val securityProperties: SecurityProperties
 ) {
     private val logger = getLogger(ArchiveService::class.java)
 
     @Transactional
-    @CacheEvict(cacheNames = ["accounts", "domains", "deeplinks"], allEntries = true)
     fun exportArchive(): DatabaseArchive {
-        val targetAccounts = ArrayList<AccountArchiveItem>()
-        val archive = DatabaseArchive(targetAccounts)
-        accountDao.findAll().forEach { acc ->
-            val targetDomains = ArrayList<DomainArchiveItem>()
-            val domains = domainDao.findAllByOwnerId(acc.id!!)
-            val isRoot = acc.global && acc.name == securityProperties.defaultGlobalName
-            targetAccounts.add(AccountArchiveItem.fromAccount(acc, targetDomains, isRoot))
-            domains.forEach { d ->
-                val targetPermalinks = ArrayList<DeeplinkArchiveItem>()
-                val deeplinks = deeplinkDao.findAllForHost(d.host)
-                targetDomains.add(DomainArchiveItem.fromDomain(d, targetPermalinks))
-                deeplinks.forEach { p ->
-                    targetPermalinks.add(DeeplinkArchiveItem(p.targetUrl!!, p.slug, p.type, p.options.toDto()))
-                }
+        val accounts = accountDao.findAll()
+        val domains = domainDao.findAll()
+        val accountNames = accounts.associate { it.id to it.name }
+        val domainHosts = domains.associate { it.id to it.host }
+        return DatabaseArchive(
+            version = DatabaseArchive.CURRENT_VERSION,
+            accounts = accounts.map { acc ->
+                val isRoot = acc.defaultAccessToken == securityProperties.defaultGlobalAccessToken
+                AccountArchiveItem(
+                    name = acc.name,
+                    root = isRoot,
+                    global = acc.global,
+                    // The root account's tokens come from the configuration
+                    secretToken = if (isRoot) null else acc.defaultAccessToken,
+                    publicReadOnlyToken = if (isRoot) null else acc.defaultPublicReadAccessToken,
+                    grants = acc.domainIds.mapNotNull { domainHosts[it] }
+                )
+            },
+            domains = domains.map { d ->
+                DomainArchiveItem(
+                    standard = d.standard,
+                    host = d.host,
+                    apiBaseUrl = d.apiBaseUrl,
+                    landingBaseUrl = d.landingBaseUrl,
+                    owner = d.ownerId?.let { accountNames[it] },
+                    links = deeplinkDao.findAllForHost(d.host).map { p ->
+                        DeeplinkArchiveItem(
+                            targetUrl = p.targetUrl!!,
+                            slug = p.slug,
+                            type = p.type,
+                            options = p.options.toDto(),
+                            metadata = p.metadata,
+                            passwordHash = p.options.password?.passwordHash,
+                            createdBy = accountNames[p.createdBy],
+                            createdDateTime = p.createdDateTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
+                            lastUpdateDateTime = p.lastUpdateDateTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                        )
+                    }
+                )
             }
-        }
-        return archive
+        )
     }
 
+    /**
+     * Accounts are matched by name, domains by host, links by host and slug.
+     * With [dryRun], nothing is written and the report tells what would happen.
+     */
     @Transactional
-    fun importArchive(archive: DatabaseArchive) {
-        // Import accounts
-        archive.accounts.forEach { acc ->
-            var account: Account = importAccount(acc)
-            // Import domains for each account
-            acc.domains.forEach { d ->
-                val domain = importDomain(account.id!!, d)
-                // Import deeplinks for each domain
-                d.links.forEach { p ->
-                    val deeplink = importDeeplink(domain.ownerId!!, domain.id!!, domain.host, p)
-                    deeplinkDao.save(deeplink)
+    @CacheEvict(cacheNames = ["accounts", "domains", "deeplinks"], allEntries = true)
+    fun importArchive(input: DatabaseArchive, mode: ImportConflictMode, dryRun: Boolean): ImportReport {
+        val archive = if (input.version < 2) upgradeV1(input) else input
+        val report = ImportReport(dryRun, mode)
+        val overwrite = mode == ImportConflictMode.OVERWRITE
+        val root = accountDao.findByAccessToken(securityProperties.defaultGlobalAccessToken!!) ?: throw AccountNotFoundException()
+
+        // 1. Accounts, without grants since domains may not exist yet
+        val accountIds = HashMap<String, String>()
+        val accountsToGrant = ArrayList<Pair<Account, AccountArchiveItem>>()
+        archive.accounts.forEach { item ->
+            logger.info("Importing account {}", item.name)
+            if (item.root) {
+                accountIds[item.name] = root.id!!
+                report.accounts.skipped++
+                return@forEach
+            }
+            val existing = accountDao.findByName(item.name)
+            val account = when {
+                existing == null -> {
+                    report.accounts.created++
+                    Account(
+                        UUID.randomUUID().toString(), item.name, item.global,
+                        item.secretToken ?: StringUtils.getRandomAlphaNumString(128),
+                        item.publicReadOnlyToken ?: StringUtils.getRandomAlphaNumString(128)
+                    )
+                }
+                overwrite -> {
+                    report.accounts.updated++
+                    existing.copy(
+                        global = item.global,
+                        defaultAccessToken = item.secretToken ?: existing.defaultAccessToken,
+                        defaultPublicReadAccessToken = item.publicReadOnlyToken ?: existing.defaultPublicReadAccessToken
+                    )
+                }
+                else -> {
+                    report.accounts.skipped++
+                    null
                 }
             }
+            // Saved now: the database may assign the account a new id, which domains and links refer to
+            val saved = if (account != null && !dryRun) accountDao.save(account) else account
+            accountIds[item.name] = saved?.id ?: existing!!.id!!
+            if (saved != null) {
+                accountsToGrant.add(saved to item)
+            }
         }
+
+        // 2. Domains and their links
+        val domainIds = HashMap<String, String>()
+        archive.domains.forEach { item ->
+            logger.info("Importing domain {}", item.host)
+            val host = item.host.trim().lowercase()
+            val existing = domainDao.findByHost(host)
+            val ownerId = item.owner?.let { accountIds[it] ?: accountDao.findByName(it)?.id }
+            val domain = when {
+                existing == null -> {
+                    report.domains.created++
+                    Domain(UUID.randomUUID().toString(), item.standard, ownerId, host, item.apiBaseUrl, item.landingBaseUrl)
+                }
+                overwrite -> {
+                    report.domains.updated++
+                    existing.copy(standard = item.standard, ownerId = ownerId, apiBaseUrl = item.apiBaseUrl, landingBaseUrl = item.landingBaseUrl)
+                }
+                else -> {
+                    report.domains.skipped++
+                    existing
+                }
+            }
+            if (!dryRun && domain !== existing) {
+                domainDao.save(domain)
+            }
+            domainIds[host] = domain.id!!
+            item.links.forEach { link -> importLink(link, domain, accountIds, root.id!!, overwrite, dryRun, report) }
+        }
+
+        // 3. Grants, now that every domain exists
+        accountsToGrant.forEach { (account, item) ->
+            val grants = item.grants.mapNotNull { domainIds[it] ?: domainDao.findByHost(it)?.id }.toSet()
+            if (!dryRun) {
+                accountDao.save(account.copy(domainIds = grants))
+            }
+        }
+        return report
     }
 
-    private fun importDeeplink(ownerId: String, domainId: String, host: String, item: DeeplinkArchiveItem): Deeplink {
-        return transactionHandler.runInTransaction {
-            logger.info("Importing deeplink {}", item.slug)
-            var deeplink: Deeplink? = deeplinkDao.findByHostAndSlug(host, item.slug!!)
-            if (deeplink != null) {
-                logger.info("Found deeplink {}: {}", deeplink.slug, deeplink.id)
-                return@runInTransaction deeplink
-            }
-            logger.info("No matching deeplink, will create one")
-            var deeplinkCreator = DeeplinkCreator(
-                null,
-                item.targetUrl,
-                domainId,
-                item.slug,
-                item.type,
-                item.options
+    private fun importLink(
+        item: DeeplinkArchiveItem,
+        domain: Domain,
+        accountIds: Map<String, String>,
+        rootId: String,
+        overwrite: Boolean,
+        dryRun: Boolean,
+        report: ImportReport
+    ) {
+        val slug = requireNotNull(item.slug?.takeIf { it.isNotBlank() }) { "Link to ${item.targetUrl} on ${domain.host} has no slug" }
+        val existing = deeplinkDao.findByHostAndSlug(domain.host, slug)
+        if (existing != null && !overwrite) {
+            report.links.skipped++
+            return
+        }
+        if (existing == null) report.links.created++ else report.links.updated++
+        if (dryRun) {
+            return
+        }
+        val now = ZonedDateTime.now()
+        val options = item.options.toOptions()
+        val passwordHash = item.passwordHash ?: item.options.password?.password?.takeIf { it.isNotBlank() }?.let { passwordEncoder.encode(it) }
+        options.password = passwordHash?.let { PasswordProtectedOptions(it) }
+        deeplinkDao.save(
+            Deeplink(
+                id = existing?.id ?: UUID.randomUUID().toString(),
+                host = domain.host,
+                createdBy = item.createdBy?.let { accountIds[it] ?: accountDao.findByName(it)?.id } ?: rootId,
+                slug = slug,
+                shortenedUrl = "${domain.apiBaseUrl}/$slug",
+                targetUrl = item.targetUrl,
+                type = item.type,
+                createdDateTime = item.createdDateTime?.let { ZonedDateTime.parse(it) } ?: now,
+                lastUpdateDateTime = item.lastUpdateDateTime?.let { ZonedDateTime.parse(it) } ?: now,
+                options = options,
+                metadata = item.metadata
             )
-            return@runInTransaction deeplinkService.save(deeplinkCreator, ownerId)
-        }
+        )
     }
 
-    private fun importAccount(acc: AccountArchiveItem): Account {
-        return transactionHandler.runInTransaction {
-            logger.info("Importing account {}", acc.name)
-            var account: Account? = accountDao.findByName(acc.name)
-            if (acc.root) {
-                return@runInTransaction accountDao.findByAccessToken(securityProperties.defaultGlobalAccessToken!!)
-                    ?: throw AccountNotFoundException()
+    /**
+     * v1 archives nest domains under accounts, and list standard domains under every account.
+     * Non-global accounts are granted the standard domains, as they could use them before 0.5.0.
+     */
+    private fun upgradeV1(archive: DatabaseArchive): DatabaseArchive {
+        val domains = LinkedHashMap<String, DomainArchiveItem>()
+        archive.accounts.forEach { acc ->
+            acc.domains.forEach { d ->
+                domains.putIfAbsent(d.host, d.copy(owner = if (d.standard) null else acc.name))
             }
-            if (account != null) {
-                logger.info("Found account {}: {}", account.name, account.id)
-            } else {
-                logger.info("No matching account, will create one")
-                account = Account(UUID.randomUUID().toString(), acc.name, acc.global, acc.secretToken!!, acc.publicReadOnlyToken!!)
-            }
-            return@runInTransaction accountDao.save(account)
         }
-
-    }
-
-    private fun importDomain(ownerId: String, dom: DomainArchiveItem): Domain {
-        return transactionHandler.runInTransaction {
-            logger.info("Importing domain {}", dom.host)
-            var domain: Domain? = domainDao.findStandardByHost(dom.host)
-            if (domain != null) {
-                logger.info("Found domain {}: {}", dom.host, domain.id)
-                if (domain.ownerId != ownerId) {
-                    logger.warn("Domain {} already belongs to another owner: {}", dom.host, domain.ownerId)
-                    throw IllegalStateException("Domain ${dom.host} already exists for another owner: ${domain.ownerId}. Will cancel import.")
-                }
-            } else {
-                logger.info("No matching domain, will create one")
-                domain = Domain(UUID.randomUUID().toString(), dom.standard, ownerId, dom.host, dom.apiBaseUrl, dom.landingBaseUrl)
-            }
-            return@runInTransaction domainDao.save(domain)
-        }
+        val standardHosts = domains.values.filter { it.standard }.map { it.host }
+        return DatabaseArchive(
+            version = DatabaseArchive.CURRENT_VERSION,
+            accounts = archive.accounts.map { it.copy(domains = emptyList(), grants = if (it.global) emptyList() else standardHosts) },
+            domains = domains.values.toList()
+        )
     }
 }
-
-
-fun DomainArchiveItem.Companion.fromDomain(
-    domain: Domain,
-    targetDeeplinks: ArrayList<DeeplinkArchiveItem>
-): DomainArchiveItem {
-    return DomainArchiveItem(
-        domain.standard,
-        domain.host,
-        domain.apiBaseUrl,
-        domain.landingBaseUrl,
-        targetDeeplinks
-    )
-}
-
-fun AccountArchiveItem.Companion.fromAccount(
-    acc: Account,
-    domains: List<DomainArchiveItem>,
-    isRoot: Boolean
-): AccountArchiveItem {
-    return AccountArchiveItem(
-        acc.name,
-        isRoot,
-        acc.global,
-        if (isRoot) null else acc.defaultAccessToken,
-        if (isRoot) null else acc.defaultPublicReadAccessToken,
-        domains
-    )
-}
-
 
 private fun Options.toDto(): OptionsDto {
     return OptionsDto(

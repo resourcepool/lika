@@ -1,7 +1,6 @@
 package li.lika.core.services
 
 import jakarta.annotation.PostConstruct
-import li.lika.security.models.AccessTokenAuthentication
 import li.lika.security.props.SecurityProperties
 import org.springframework.stereotype.Service
 
@@ -11,7 +10,8 @@ class InitialStateService(val accountService: AccountService, val domainService:
     fun init() {
         accountService.init()
         domainService.init()
+        accountService.migrateLegacyGrants()
         val adminAccount = accountService.findByAccessToken(securityProperties.defaultGlobalAccessToken!!)!!
-        deeplinkService.init(AccessTokenAuthentication.ofReadWriteAccessToken(adminAccount, adminAccount.defaultAccessToken))
+        deeplinkService.init(adminAccount.id!!)
     }
 }

@@ -25,7 +25,7 @@ class DeeplinkDb() {
     constructor(
         id: String,
         host: String,
-        ownerId: String,
+        createdBy: String,
         slug: String?,
         shortenedUrl: String,
         targetUrl: String,
@@ -41,7 +41,7 @@ class DeeplinkDb() {
     ) : this() {
         this.id = id
         this.host = host
-        this.ownerId = ownerId
+        this.ownerId = createdBy
         this.slug = slug
         this.shortenedUrl = shortenedUrl
         this.targetUrl = targetUrl
@@ -60,6 +60,7 @@ class DeeplinkDb() {
     @Id
     private var id: String? = null
     private var host: String = ""
+    // Account which created the link (column kept as ownerId for compatibility)
     private var ownerId: String = ""
     private var slug: String? = null
     private var shortenedUrl: String = ""
@@ -80,7 +81,7 @@ class DeeplinkDb() {
     // Landing options
     var optionLandingTemplateId: String? = null
 
-    // Password options
+    // Password options: BCrypt hash
     var optionPassword: String? = null
     var metadata: String? = null
 
@@ -123,7 +124,7 @@ fun Deeplink.toDb(mapper: ObjectMapper): DeeplinkDb {
     return DeeplinkDb(
         id,
         host,
-        ownerId,
+        createdBy,
         slug,
         shortenedUrl,
         targetUrl!!,
@@ -134,7 +135,7 @@ fun Deeplink.toDb(mapper: ObjectMapper): DeeplinkDb {
         options.activation?.targetUrlBeforeActivation,
         options.expiry?.expiryDate,
         options.landing?.templateId,
-        options.password?.password,
+        options.password?.passwordHash,
         if (metadata.isEmpty()) { null } else mapper.writeValueAsString(metadata)
     )
 }

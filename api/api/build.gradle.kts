@@ -73,5 +73,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.mockk:mockk:${Versions.mockk}")
     testImplementation("org.springframework.security:spring-security-test")
+    // Tests run against the in-memory database
+    testImplementation("org.springframework:spring-jdbc")
 
 }

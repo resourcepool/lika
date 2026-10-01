@@ -8,6 +8,7 @@ import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,9 +16,11 @@ import java.util.Optional;
 public interface PermalinkRepository extends CrudRepository<DeeplinkDb, String>, PagingAndSortingRepository<DeeplinkDb, String> {
     Optional<DeeplinkDb> findFirstByHostAndSlug(String host, String slug);
     List<DeeplinkDb> findAllByHostOrderByLastUpdateDateTimeDesc(String host);
-    Page<DeeplinkDb> findAllByHostOrderByLastUpdateDateTimeDesc(String host, Pageable pageable);
+    long countByHost(String host);
     List<DeeplinkDb> deleteAllByOptionExpiryDateIsBefore(LocalDate date);
     void deleteAllByHostAndSlug(String host, String slug);
+    void deleteAllByHost(String host);
 
-    Page<DeeplinkDb> findAllByHostAndSearchStringLikeIgnoreCase(String host, String searchString, Pageable pageable);
+    Page<DeeplinkDb> findAllByHostIn(Collection<String> hosts, Pageable pageable);
+    Page<DeeplinkDb> findAllByHostInAndSearchStringLikeIgnoreCase(Collection<String> hosts, String searchString, Pageable pageable);
 }

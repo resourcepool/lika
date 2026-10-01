@@ -23,7 +23,8 @@ open class DeeplinkDaoMongoImpl(private val template: MongoTemplate) : DeeplinkD
         const val ID_PATH = "_id"
         const val SLUG_PATH = "slug"
         const val HOST_PATH = "host"
-        const val EXPIRY_DATE_PATH = "expiryDate"
+        const val TARGET_URL_PATH = "targetUrl"
+        const val EXPIRY_DATE_PATH = "optionExpiryDate"
         const val LAST_UPDATE_PATH = "lastUpdateDateTime"
     }
 
@@ -90,11 +91,25 @@ open class DeeplinkDaoMongoImpl(private val template: MongoTemplate) : DeeplinkD
         }
     }
 
-    override fun findPageForHost(host: String, req: PageRequest): PageResponse<Deeplink> {
-        // FIXME to be tested
-        // FIXME filter not implemented
-        val query = Query.query(whereHostIsEqualTo(host))
-        val pageQuery = Query.query(whereHostIsEqualTo(host)).with(
+    override fun countForHost(host: String): Int {
+        return template.count(Query.query(whereHostIsEqualTo(host)), DeeplinkDb::class.java).toInt()
+    }
+
+    override fun deleteAllForHost(host: String) {
+        template.remove(Query.query(whereHostIsEqualTo(host)), DeeplinkDb::class.java)
+    }
+
+    override fun findPageForHosts(hosts: Collection<String>, req: PageRequest): PageResponse<Deeplink> {
+        val criteria = Criteria.where(HOST_PATH).`in`(hosts)
+        if (!req.filter.isNullOrBlank()) {
+            val pattern = Regex.escape(req.filter!!)
+            criteria.orOperator(
+                Criteria.where(SLUG_PATH).regex(pattern, "i"),
+                Criteria.where(TARGET_URL_PATH).regex(pattern, "i"),
+                Criteria.where(HOST_PATH).regex(pattern, "i")
+            )
+        }
+        val pageQuery = Query.query(criteria).with(
             org.springframework.data.domain.PageRequest.of(
                 req.offset / req.limit,
                 req.limit,
@@ -103,7 +118,7 @@ open class DeeplinkDaoMongoImpl(private val template: MongoTemplate) : DeeplinkD
         )
         val result = template.find(pageQuery, DeeplinkDb::class.java)
             .map(DeeplinkDb::toPermalink)
-        val totalItemCount = template.count(query, DeeplinkDb::class.java)
+        val totalItemCount = template.count(Query.query(criteria), DeeplinkDb::class.java)
         return PageResponse(req, totalItemCount.toInt(), result)
     }
 
@@ -120,7 +135,7 @@ open class DeeplinkDaoMongoImpl(private val template: MongoTemplate) : DeeplinkD
     }
 
     private fun whereExpiryDateBeforeToday(): Criteria {
-        return Criteria.where(EXPIRY_DATE_PATH).lte(LocalDate.now().minusDays(1))
+        return Criteria.where(EXPIRY_DATE_PATH).lt(LocalDate.now().minusDays(1))
     }
 
 

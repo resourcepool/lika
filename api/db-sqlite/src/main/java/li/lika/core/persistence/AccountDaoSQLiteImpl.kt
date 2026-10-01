@@ -32,6 +32,10 @@ class AccountDaoSQLiteImpl(private val repository: AccountRepository) : AccountD
         return r?.toDomain()
     }
 
+    override fun findAllPendingGrantsMigration(): List<Account> {
+        return repository.findAllByGrantsVersionIsNull().map { it.toDomain() }
+    }
+
     override fun save(o: Account): Account {
         return repository.save(o.toDb()).toDomain()
     }

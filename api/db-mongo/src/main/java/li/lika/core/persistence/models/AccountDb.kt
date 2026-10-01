@@ -14,11 +14,18 @@ data class AccountDb(
         @Indexed
         val defaultAccessToken: String,
         @Indexed
-        val defaultPublicReadAccessToken: String) {
+        val defaultPublicReadAccessToken: String,
+        val domainIds: Set<String>? = null,
+        // Null for accounts created before domain grants existed
+        val grantsVersion: Int? = null) {
 
 
     fun toDomain(): Account {
-        return Account(id, name, global, defaultAccessToken, defaultPublicReadAccessToken)
+        return Account(id, name, global, defaultAccessToken, defaultPublicReadAccessToken, domainIds ?: emptySet())
+    }
+
+    companion object {
+        const val CURRENT_GRANTS_VERSION = 1
     }
 }
 
@@ -28,5 +35,7 @@ fun Account.toDb(): AccountDb {
         name,
         global,
         defaultAccessToken,
-        defaultPublicReadAccessToken)
+        defaultPublicReadAccessToken,
+        domainIds,
+        AccountDb.CURRENT_GRANTS_VERSION)
 }

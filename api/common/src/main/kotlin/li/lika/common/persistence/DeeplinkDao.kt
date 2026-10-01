@@ -10,13 +10,15 @@ interface DeeplinkDao {
     fun save(p: Deeplink): Deeplink
     fun findAll(): List<Deeplink>
     fun findAllForHost(host: String): List<Deeplink>
+    fun countForHost(host: String): Int
     fun removeAllExpired(): List<Deeplink>
     fun deleteBySlug(host: String, slug: String)
+    fun deleteAllForHost(host: String)
     fun deleteOne(id: String)
 
     /**
      * Warning! This is voluntarily synchronous
      */
     fun deleteAll()
-    fun findPageForHost(host: String, req: PageRequest): PageResponse<Deeplink>
+    fun findPageForHosts(hosts: Collection<String>, req: PageRequest): PageResponse<Deeplink>
 }

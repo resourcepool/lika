@@ -1,5 +1,6 @@
 package li.lika.common.models
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import java.time.LocalDate
 import java.time.ZonedDateTime
 
@@ -17,8 +18,13 @@ data class ExpiryOptions(
 )
 
 data class PasswordProtectedOptions(
-    var password: String? = null
-)
+    /** BCrypt hash of the password. Never serialized. */
+    @get:JsonIgnore
+    var passwordHash: String? = null
+) {
+    val enabled: Boolean
+        get() = !passwordHash.isNullOrBlank()
+}
 
 data class Options(
     var activation: ActivationOptions? = null,
@@ -30,7 +36,8 @@ data class Options(
 data class Deeplink(
     var id: String = "",
     var host: String = "",
-    var ownerId: String = "",
+    /** Id of the account which created the link. Any account with access to the domain may manage it. */
+    var createdBy: String = "",
     var slug: String? = null,
     var shortenedUrl: String = "",
     var targetUrl: String? = null,
@@ -42,48 +49,32 @@ data class Deeplink(
 )
 
 fun Deeplink.isPasswordProtected(): Boolean {
-    return !(options.password?.password.isNullOrBlank())
-
+    return options.password?.enabled == true
 }
 
+fun Deeplink.isExpired(today: LocalDate = LocalDate.now()): Boolean {
+    val expiryDate = options.expiry?.expiryDate ?: return false
+    return today.isAfter(expiryDate)
+}
+
+fun Deeplink.isActivated(now: ZonedDateTime = ZonedDateTime.now()): Boolean {
+    val activationInstant = options.activation?.activationInstant ?: return true
+    return !now.isBefore(activationInstant)
+}
+
+/**
+ * The URL a visitor should be sent to right now, or null if the link should not resolve.
+ */
+fun Deeplink.currentTargetUrl(now: ZonedDateTime = ZonedDateTime.now()): String? {
+    if (isExpired(now.toLocalDate())) {
+        return null
+    }
+    if (!isActivated(now)) {
+        return options.activation?.targetUrlBeforeActivation?.takeIf { it.isNotBlank() }
+    }
+    return targetUrl
+}
 
 fun Deeplink.hideTarget(): Deeplink {
-    return this.copy(
-        id = this.id,
-        host = this.host,
-        ownerId = this.ownerId,
-        slug = this.slug,
-        shortenedUrl = this.shortenedUrl,
-        targetUrl = null, // should be null
-        type = this.type,
-        createdDateTime = this.createdDateTime,
-        lastUpdateDateTime = this.lastUpdateDateTime,
-        options = this.options.copy(
-            activation = options.activation,
-            landing = options.landing,
-            expiry = options.expiry,
-            password = null // should not send password
-        ),
-        metadata = this.metadata)
-}
-
-
-fun Deeplink.safe(): Deeplink {
-    return this.copy(
-        id = this.id,
-        host = this.host,
-        ownerId = this.ownerId,
-        slug = this.slug,
-        shortenedUrl = this.shortenedUrl,
-        targetUrl = this.targetUrl, // should be null
-        type = this.type,
-        createdDateTime = this.createdDateTime,
-        lastUpdateDateTime = this.lastUpdateDateTime,
-        options = this.options.copy(
-            activation = options.activation,
-            landing = options.landing,
-            expiry = options.expiry,
-            password = null // should not send password
-        ),
-        metadata = this.metadata)
+    return this.copy(targetUrl = null)
 }

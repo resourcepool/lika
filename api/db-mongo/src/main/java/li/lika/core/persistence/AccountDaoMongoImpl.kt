@@ -20,6 +20,7 @@ class AccountDaoMongoImpl(private val template: MongoTemplate) : AccountDao {
         const val NAME_PATH = "name"
         const val ACCESS_TOKEN_PATH = "defaultAccessToken"
         const val PUBLIC_READ_ACCESS_TOKEN_PATH = "defaultPublicReadAccessToken"
+        const val GRANTS_VERSION_PATH = "grantsVersion"
     }
 
     override fun findAll(): List<Account> {
@@ -39,6 +40,10 @@ class AccountDaoMongoImpl(private val template: MongoTemplate) : AccountDao {
     override fun findByAccessToken(accessToken: String): Account? {
         val r = template.findOne(Query.query(Criteria().orOperator(whereDefaultAccessTokenIsEqualTo(accessToken), whereDefaultPublicReadAccessTokenIsEqualTo(accessToken))), AccountDb::class.java)
         return r?.toDomain()
+    }
+
+    override fun findAllPendingGrantsMigration(): List<Account> {
+        return template.find(Query.query(Criteria.where(GRANTS_VERSION_PATH).isNull), AccountDb::class.java).map { it.toDomain() }
     }
 
     override fun save(o: Account): Account {

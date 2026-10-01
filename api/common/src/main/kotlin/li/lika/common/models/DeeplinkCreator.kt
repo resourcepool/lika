@@ -9,8 +9,13 @@ data class LandingOptionsDto(
         var templateId: String? = null
 )
 
+/**
+ * On edit, omitting the password options keeps the current password.
+ * Set [password] to replace it, or [remove] to drop the protection.
+ */
 data class PasswordProtectedOptionsDto(
-    var password: String? = null
+    var password: String? = null,
+    var remove: Boolean = false
 )
 
 data class ExpiryOptionsDto(

@@ -15,6 +15,7 @@ data class DeeplinkDb(
     var id: String = "",
     @Indexed
     var host: String = "",
+    // Account which created the link (field kept as ownerId for compatibility)
     @Indexed
     var ownerId: String = "",
     @Indexed
@@ -33,7 +34,7 @@ data class DeeplinkDb(
     var optionExpiryDate: LocalDate? = null,
     // Landing options
     var optionLandingTemplateId: String? = null,
-    // Password options
+    // Password options: BCrypt hash
     var optionPassword: String? = null,
     // Optional metadata
     var metadata: HashMap<String, String>? = null
@@ -74,7 +75,7 @@ data class DeeplinkDb(
             return DeeplinkDb(
                 pl.id,
                 pl.host,
-                pl.ownerId,
+                pl.createdBy,
                 pl.slug,
                 pl.shortenedUrl,
                 pl.targetUrl!!,
@@ -85,7 +86,7 @@ data class DeeplinkDb(
                 pl.options.activation?.targetUrlBeforeActivation,
                 pl.options.expiry?.expiryDate,
                 pl.options.landing?.templateId,
-                pl.options.password?.password,
+                pl.options.password?.passwordHash,
                 HashMap(pl.metadata)
             )
         }

@@ -7,7 +7,7 @@ import org.springframework.security.core.Authentication
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 
-class AccessTokenAuthentication private constructor(private val account: Account, private val accessToken: String, val roles: List<Role>) : Authentication {
+class AccessTokenAuthentication private constructor(val account: Account, private val accessToken: String, val roles: List<Role>, val readWrite: Boolean) : Authentication {
 
     private val authorities: List<GrantedAuthority>
     private var authenticated: Boolean
@@ -18,6 +18,10 @@ class AccessTokenAuthentication private constructor(private val account: Account
 
     fun getId(): String {
         return account.id!!
+    }
+
+    fun isGlobal(): Boolean {
+        return account.global
     }
 
     override fun getAuthorities(): Collection<GrantedAuthority> {
@@ -53,12 +57,12 @@ class AccessTokenAuthentication private constructor(private val account: Account
             } else {
                 roles = listOf(Roles.orgRoleReadWrite(account.id!!))
             }
-            return AccessTokenAuthentication(account, accessToken, roles)
+            return AccessTokenAuthentication(account, accessToken, roles, true)
         }
 
         fun ofReadAccessToken(account: Account, accessToken: String): AccessTokenAuthentication {
             val roles: List<Role> = listOf(Roles.globalRoleRead())
-            return AccessTokenAuthentication(account, accessToken, roles)
+            return AccessTokenAuthentication(account, accessToken, roles, false)
         }
     }
 

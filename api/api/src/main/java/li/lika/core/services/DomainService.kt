@@ -1,17 +1,29 @@
 package li.lika.core.services
 
 import li.lika.common.exceptions.DomainAlreadyExistsException
+import li.lika.common.exceptions.DomainNotEmptyException
+import li.lika.common.exceptions.InvalidDomainException
 import li.lika.common.models.Domain
 import li.lika.common.models.DomainCreator
+import li.lika.common.models.DomainUpdate
+import li.lika.common.persistence.AccountDao
+import li.lika.common.persistence.DeeplinkDao
 import li.lika.common.persistence.DomainDao
 import li.lika.core.props.LikaProperties
 import li.lika.security.models.AccessTokenAuthentication
 import org.springframework.cache.annotation.CacheEvict
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 
 @Service
-class DomainService(private val domainDao: DomainDao, private val props: LikaProperties) {
+class DomainService(
+    private val domainDao: DomainDao,
+    private val deeplinkDao: DeeplinkDao,
+    private val accountDao: AccountDao,
+    private val domainAccess: DomainAccessService,
+    private val props: LikaProperties
+) {
 
     @CacheEvict("domains", allEntries = true)
     fun init() {
@@ -23,24 +35,36 @@ class DomainService(private val domainDao: DomainDao, private val props: LikaPro
         }
     }
 
+    /**
+     * @param standard system-wide domain, shown as such in the admin
+     */
     @CacheEvict("domains", allEntries = true)
-    fun save(d: DomainCreator, ownerId: String): Domain {
+    fun create(d: DomainCreator, ownerId: String, standard: Boolean = false): Domain {
         val host = d.host.trim().lowercase()
-        val existingDomain = domainDao.findByHostAndOwnerId(host, ownerId)
-        if (existingDomain != null) {
+        require(host.isNotEmpty()) { "Domain host is required" }
+        if (domainDao.findByHost(host) != null) {
             throw DomainAlreadyExistsException()
         }
-        return domainDao.save(Domain(null, false, ownerId, host, d.apiBaseUrl.trim().lowercase(), d.landingBaseUrl.trim().lowercase()))
+        return domainDao.save(Domain(null, standard, ownerId, host, d.apiBaseUrl.trim().lowercase(), d.landingBaseUrl.trim().lowercase().ifEmpty { null }))
     }
 
-    @CacheEvict("domains", allEntries = true)
-    fun saveGlobal(d: DomainCreator, ownerId: String): Domain {
-        val host = d.host.trim().lowercase()
-        val existingDomain = domainDao.findByHostAndOwnerId(host, ownerId)
-        if (existingDomain != null) {
-            throw DomainAlreadyExistsException()
+    /**
+     * The host cannot change: published short links depend on it.
+     */
+    @Transactional
+    @CacheEvict(cacheNames = ["domains", "deeplinks"], allEntries = true)
+    fun update(id: String, req: DomainUpdate): Domain {
+        val domain = domainDao.findOne(id) ?: throw InvalidDomainException()
+        val apiBaseUrl = req.apiBaseUrl?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: domain.apiBaseUrl
+        val landingBaseUrl = if (req.landingBaseUrl == null) domain.landingBaseUrl else req.landingBaseUrl!!.trim().lowercase().ifEmpty { null }
+        val updated = domainDao.save(domain.copy(apiBaseUrl = apiBaseUrl, landingBaseUrl = landingBaseUrl))
+        if (apiBaseUrl != domain.apiBaseUrl) {
+            // Short URLs are stored on each link
+            deeplinkDao.findAllForHost(domain.host).forEach {
+                deeplinkDao.save(it.copy(shortenedUrl = "$apiBaseUrl/${it.slug}"))
+            }
         }
-        return domainDao.save(Domain(null, true, ownerId, host, d.apiBaseUrl.trim().lowercase(), d.landingBaseUrl.trim().lowercase()))
+        return updated
     }
 
     @Cacheable("domains")
@@ -53,27 +77,28 @@ class DomainService(private val domainDao: DomainDao, private val props: LikaPro
         return domainDao.findByHost(host)
     }
 
-    @Cacheable("domains")
-    fun findOneByHostAndOwnerId(host: String, ownerId: String): Domain? {
-        return domainDao.findByHostAndOwnerId(host, ownerId)
+    fun getAll(caller: AccessTokenAuthentication): List<Domain> {
+        return domainAccess.accessibleDomains(caller)
     }
 
-    @Cacheable("domains")
-    fun findOneByDomainIdAndOwnerId(domainId: String, ownerId: String): Domain? {
-        return domainDao.findByDomainIdAndOwnerId(domainId, ownerId)
-    }
-
-    fun getAll(owner: AccessTokenAuthentication): List<Domain> {
-        return domainDao.findAllByOwnerId(owner.getId())
-    }
-
-    @CacheEvict("domains")
-    fun deleteByHostAndOwnerId(host: String, owner: AccessTokenAuthentication) {
-        return domainDao.deleteByHostAndOwnerId(host, owner.getId())
-    }
-
-    @CacheEvict("domains")
-    fun deleteOne(id: String) {
+    /**
+     * Refuses to delete a domain that still has links, unless [force] is set, in which case its links are deleted too.
+     * Grants on the domain are always removed.
+     */
+    @Transactional
+    @CacheEvict(cacheNames = ["domains", "deeplinks", "accounts"], allEntries = true)
+    fun deleteOne(id: String, force: Boolean) {
+        val domain = domainDao.findOne(id) ?: throw InvalidDomainException()
+        val linkCount = deeplinkDao.countForHost(domain.host)
+        if (linkCount > 0 && !force) {
+            throw DomainNotEmptyException(linkCount)
+        }
+        if (linkCount > 0) {
+            deeplinkDao.deleteAllForHost(domain.host)
+        }
+        accountDao.findAll()
+            .filter { id in it.domainIds }
+            .forEach { accountDao.save(it.copy(domainIds = it.domainIds - id)) }
         domainDao.deleteOne(id)
     }
 

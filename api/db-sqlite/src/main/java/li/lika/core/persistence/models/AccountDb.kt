@@ -18,12 +18,15 @@ class AccountDb() {
         global: Boolean,
         defaultAccessToken: String,
         defaultPublicReadAccessToken: String,
+        domainIds: Set<String>,
     ): this() {
         this.id = id
         this.name = name
         this.global = global
         this.defaultAccessToken = defaultAccessToken
         this.defaultPublicReadAccessToken = defaultPublicReadAccessToken
+        this.domainIds = domainIds.toMutableSet()
+        this.grantsVersion = CURRENT_GRANTS_VERSION
     }
 
     @Id
@@ -35,8 +38,20 @@ class AccountDb() {
     private var defaultAccessToken: String? = null
     private var defaultPublicReadAccessToken: String? = null
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "account_domains", joinColumns = [JoinColumn(name = "account_id")])
+    @Column(name = "domain_id")
+    private var domainIds: MutableSet<String> = mutableSetOf()
+
+    // Null for accounts created before domain grants existed
+    private var grantsVersion: Int? = null
+
     fun toDomain(): Account {
-        return Account(id, name, global, defaultAccessToken!!, defaultPublicReadAccessToken!!)
+        return Account(id, name, global, defaultAccessToken!!, defaultPublicReadAccessToken!!, domainIds.toSet())
+    }
+
+    companion object {
+        const val CURRENT_GRANTS_VERSION = 1
     }
 }
 
@@ -46,5 +61,6 @@ fun Account.toDb(): AccountDb {
         name,
         global,
         defaultAccessToken,
-        defaultPublicReadAccessToken)
+        defaultPublicReadAccessToken,
+        domainIds)
 }

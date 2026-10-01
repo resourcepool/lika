@@ -44,15 +44,21 @@ class DeeplinkDaoH2Impl(private val repository: PermalinkRepository, private val
                 .map { db -> db.toDomain(mapper) }
     }
 
-    override fun findPageForHost(host: String, req: PageRequest): PageResponse<Deeplink> {
-        val pageRequest = SpringPageRequest.of(req.offset / req.limit, req.limit, req.sort!!.toSpringSort());
-        if (req.filter.isNullOrBlank()) {
-            val results = repository.findAllByHostOrderByLastUpdateDateTimeDesc(host, pageRequest)
-            return results.toPageResponse(req) { db -> db.toDomain(mapper) }
-        } else {
-            val results = repository.findAllByHostAndSearchStringLikeIgnoreCase(host, "%" + req.filter + "%", pageRequest)
-            return results.toPageResponse(req) { db -> db.toDomain(mapper) }
+    override fun countForHost(host: String): Int {
+        return repository.countByHost(host).toInt()
+    }
+
+    override fun findPageForHosts(hosts: Collection<String>, req: PageRequest): PageResponse<Deeplink> {
+        val pageRequest = SpringPageRequest.of(req.offset / req.limit, req.limit, req.sort!!.toSpringSort())
+        if (hosts.isEmpty()) {
+            return PageResponse(req, 0, emptyList())
         }
+        val results = if (req.filter.isNullOrBlank()) {
+            repository.findAllByHostIn(hosts, pageRequest)
+        } else {
+            repository.findAllByHostInAndSearchStringLikeIgnoreCase(hosts, "%" + req.filter + "%", pageRequest)
+        }
+        return results.toPageResponse(req) { db -> db.toDomain(mapper) }
     }
 
     override fun removeAllExpired(): List<Deeplink> {
@@ -67,6 +73,10 @@ class DeeplinkDaoH2Impl(private val repository: PermalinkRepository, private val
             logger.error("Error occurred during deeplink deletion: {}", e.message)
             throw IllegalStateException(e)
         }
+    }
+
+    override fun deleteAllForHost(host: String) {
+        repository.deleteAllByHost(host)
     }
 
     override fun deleteOne(id: String) {
