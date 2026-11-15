@@ -18,7 +18,7 @@ import java.util.UUID
  * Runs against the in-memory database seeded from application-dev.yml.
  * Tests share the context: each one creates its own users, keys and domains with unique names.
  */
-@SpringBootTest(properties = ["lika.auth.setup-token=${ApiTestSupport.SETUP_TOKEN}"])
+@SpringBootTest(properties = ["lika.auth.setup-token=${ApiTestSupport.SETUP_TOKEN}", "lika.host-header=${ApiTestSupport.CDN_HOST_HEADER}"])
 @ActiveProfiles("dev")
 @AutoConfigureMockMvc
 abstract class ApiTestSupport {
@@ -34,6 +34,8 @@ abstract class ApiTestSupport {
         const val ADMIN_TOKEN = "lika-client-secret"
         const val STANDARD_HOST = "localhost:8080"
         const val SETUP_TOKEN = "test-setup-token"
+        /** Header a CDN sets with the host it received (LIKA_HOST_HEADER) */
+        const val CDN_HOST_HEADER = "X-Lika-Host"
         const val ADMIN_EMAIL = "admin@lika.test"
         const val PASSWORD = "correct horse battery"
     }

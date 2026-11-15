@@ -1,6 +1,8 @@
 package li.lika.webapp.controllers
 
+import jakarta.servlet.http.HttpServletRequest
 import li.lika.common.exceptions.InvalidHostException
+import li.lika.webapp.support.RequestHost
 import li.lika.common.exceptions.PermalinkNotFoundException
 import li.lika.common.models.Deeplink
 import li.lika.common.models.DeeplinkType
@@ -13,7 +15,6 @@ import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.servlet.ModelAndView
@@ -23,15 +24,13 @@ import org.springframework.web.servlet.ModelAndView
 @Controller
 class PublicLinksController(
         private val domainService: DomainService,
-        private val deeplinkService: DeeplinkService) {
+        private val deeplinkService: DeeplinkService,
+        private val requestHost: RequestHost) {
     private val logger = org.slf4j.LoggerFactory.getLogger(PublicLinksController::class.java)
 
     @GetMapping("{rootDeeplink}")
-    fun getDeeplink(@RequestHeader(name="Host", required = false) host: String? = null,
-                    @RequestHeader(name="X-Forwarded-Host", required = false) forwardedHost: String? = null,
-                    @PathVariable rootDeeplink: String): ModelAndView {
-
-        val host = sanitizeHost(host, forwardedHost)
+    fun getDeeplink(request: HttpServletRequest, @PathVariable rootDeeplink: String): ModelAndView {
+        val host = requestHost.of(request)
         if (rootDeeplink == "index.html") {
             logger.warn("Root deeplink is blank, redirecting to home")
             if (host != null) {
@@ -59,11 +58,10 @@ class PublicLinksController(
      * Password form of a protected link: redirects to the target if the password matches.
      */
     @PostMapping("{rootDeeplink}")
-    fun unlockDeeplink(@RequestHeader(name="Host", required = false) host: String? = null,
-                       @RequestHeader(name="X-Forwarded-Host", required = false) forwardedHost: String? = null,
+    fun unlockDeeplink(request: HttpServletRequest,
                        @PathVariable rootDeeplink: String,
                        @RequestParam(required = false) password: String?): ModelAndView {
-        val pl = findResolvable(sanitizeHost(host, forwardedHost), rootDeeplink)
+        val pl = findResolvable(requestHost.of(request), rootDeeplink)
         if (pl.type != DeeplinkType.SIMPLE) {
             throw PermalinkNotFoundException()
         }
@@ -91,15 +89,4 @@ class PublicLinksController(
         }
         return mav
     }
-
-    private fun sanitizeHost(host: String?, forwardedHost: String?): String? {
-        var result = host?.trim()?.lowercase()
-        logger.debug("Host: {}", result)
-        if (forwardedHost != null) {
-            logger.debug("X-Forwarded-Host: $forwardedHost")
-            result = forwardedHost.trim().lowercase()
-        }
-        return result
-    }
-
 }

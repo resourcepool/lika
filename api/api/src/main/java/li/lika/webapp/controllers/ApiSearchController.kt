@@ -1,6 +1,8 @@
 package li.lika.webapp.controllers
 
+import jakarta.servlet.http.HttpServletRequest
 import li.lika.common.exceptions.InvalidPasswordException
+import li.lika.webapp.support.RequestHost
 import li.lika.common.models.Deeplink
 import li.lika.common.models.hideTarget
 import li.lika.common.models.isPasswordProtected
@@ -18,7 +20,8 @@ import org.springframework.web.bind.annotation.*
 @RestController
 class ApiSearchController(
     private val deeplinkService: DeeplinkService,
-    private val authorization: AuthorizationService
+    private val authorization: AuthorizationService,
+    private val requestHost: RequestHost
 ) {
 
     @GetMapping("/slug/suggestions/{searchStr}")
@@ -33,10 +36,10 @@ class ApiSearchController(
     fun search(@PathVariable slug: String,
                @RequestParam(required = false) domainId: String?,
                @RequestParam(required = false) password: String?,
-               @RequestHeader(name="Host", required = false) host: String?,
+               request: HttpServletRequest,
                @AuthenticationPrincipal p: LikaPrincipal): Deeplink {
         val caller = p
-        val d = domainId ?: authorization.assertCanHost(caller, host?.trim()?.lowercase() ?: "", DomainRole.VIEWER).id!!
+        val d = domainId ?: authorization.assertCanHost(caller, requestHost.of(request) ?: "", DomainRole.VIEWER).id!!
         val deepLink = deeplinkService.findOneByDomainAndSlug(caller, d, slug)
         if (deepLink.isPasswordProtected()) {
             if (password.isNullOrBlank()) {

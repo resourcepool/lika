@@ -13,8 +13,26 @@ Every setting of Lika, as environment variables. The API (`api` image) and the w
 | `LIKA_WEB_URL` | `http://localhost:3000` | Public URL of the web interface, used in invitation and password reset links. **Set it in production.** |
 | `LIKA_PUBLIC_API_URL` | — | Public URL of the API, e.g. `https://go.example.com`. Gives the MCP URL shown to users (`<url>/mcp`) and the base URL in the skills. |
 | `LIKA_SETUP_TOKEN` | random | Setup token creating the first admin. Without it, a random one is printed in the logs while no admin exists. |
+| `LIKA_HOST_HEADER` | — | Header carrying the original host of requests forwarded by a CDN, e.g. `X-Lika-Host`. See [Behind a CDN](#behind-a-cdn). |
 | `JAVA_OPTS` | — | Options of the JVM, e.g. `-Xmx512m` |
 | `SERVER_PORT` | `8080` | |
+
+### Behind a CDN
+
+The host of a request tells on which domain its slug is looked up. When a CDN serves `https://domain1.com/slug` from an origin of the API like `https://origin.example.com/slug`, the API reads the original host from, in order:
+
+1. the header named by `LIKA_HOST_HEADER`, e.g. `X-Lika-Host`, that the CDN sets to the host it received;
+2. `X-Forwarded-Host`;
+3. `Host`.
+
+When a header lists several hosts, one per proxy, the first one is used. Register `domain1.com` as a domain in Lika, with the short URL base `https://domain1.com`.
+
+Prefer a dedicated header. Reverse proxies such as Traefik (Dokploy) replace `X-Forwarded-Host` with the host they received, unless they trust the CDN's addresses: `forwardedHeaders.trustedIPs` of their entry points. Custom headers go through untouched.
+
+- **Cloudflare**: *Rules › Transform Rules › Modify Request Header*, set `X-Lika-Host` dynamically to `http.host`.
+- **CloudFront**: in the origin of each distribution, a custom header `X-Lika-Host` with its domain, e.g. `domain1.com`.
+
+Whoever reaches the origin directly can pick the domain with this header. They only get the links of that domain, which are public anyway; password-protected links still need their password.
 
 ### Sign-in
 

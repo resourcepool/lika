@@ -1,5 +1,11 @@
 # Upgrading Lika
 
+## 0.10.x → 0.11.0
+
+- Behind a CDN rewriting the `Host` header to the origin, set `LIKA_HOST_HEADER` to a header the CDN fills with the original host (e.g. `X-Lika-Host`): slugs are looked up on that domain. See [Behind a CDN](docs/CONFIGURATION.md#behind-a-cdn).
+- `X-Forwarded-Host` holding several hosts now resolves to the first one, the client's, instead of matching no domain.
+- The search of a link by host (`GET /api/search/slug/{slug}` without `domainId`) reads the host like public links, `X-Forwarded-Host` included.
+
 ## 0.9.x → 0.10.0
 
 - `LIKA_FIREBASE_SERVICE_ACCOUNT` takes the service account key file encoded in base64 (`base64 -w0 key.json`), easier to paste in a hosting panel. The JSON itself and the path to the file still work.

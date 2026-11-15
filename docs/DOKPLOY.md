@@ -48,6 +48,16 @@ Traefik forwards `X-Forwarded-Proto` and `X-Forwarded-Host`: session cookies are
 
 With Keycloak, add `https://lika.example.com/auth/callback` to the redirect URIs of the client. With Google sign-in through Firebase, add it to the OAuth client.
 
+## Behind a CDN
+
+To serve `https://domain1.com/slug` through a CDN whose origin is a domain of the API, e.g. `https://origin.example.com`:
+
+1. Point `domain1.com` to the CDN, and the CDN to the origin `origin.example.com`: add it to the **Domains** of the API application in Dokploy (port 8080).
+2. Have the CDN send the host it received in a header, e.g. `X-Lika-Host`, and set `LIKA_HOST_HEADER=X-Lika-Host` on the API. Traefik replaces `X-Forwarded-Host`, so it cannot be used unless Traefik trusts the CDN's addresses.
+3. In Lika, add the domain `domain1.com` with the short URL base `https://domain1.com`.
+
+Details and CDN examples: [CONFIGURATION.md](CONFIGURATION.md#behind-a-cdn).
+
 ## Updates
 
 Enable **Autodeploy** on both applications to deploy on every push to `main`. The API migrates its data on start; read [UPGRADING.md](../UPGRADING.md) before moving to a new version.

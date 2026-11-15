@@ -40,7 +40,7 @@ import java.util.concurrent.TimeUnit
 @SpringBootApplication(exclude = [ErrorMvcAutoConfiguration::class, UserDetailsServiceAutoConfiguration::class])
 @EnableScheduling
 @EnableCaching
-@ComponentScan(basePackages = ["li.lika.core.persistence", "li.lika.core.services", "li.lika.webapp.controllers"])
+@ComponentScan(basePackages = ["li.lika.core.persistence", "li.lika.core.services", "li.lika.webapp.controllers", "li.lika.webapp.support"])
 @PropertySource(value = ["classpath:application-db-sqlite.properties"], ignoreResourceNotFound = true)
 @PropertySource(value = ["classpath:application-db-memory.properties"], ignoreResourceNotFound = true)
 @PropertySource(value = ["classpath:application-db-mongo.properties"], ignoreResourceNotFound = true)
