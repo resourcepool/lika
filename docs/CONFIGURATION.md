@@ -60,7 +60,7 @@ Users who already have an account in the realm, possibly through LDAP or another
 |---|---|
 | `LIKA_FIREBASE_PROJECT_ID` | Firebase project id |
 | `LIKA_FIREBASE_API_KEY` | Web API key of the project (*Project settings › General*) |
-| `LIKA_FIREBASE_SERVICE_ACCOUNT` | Service account key: path to the JSON file, or the JSON itself. Its account needs the *Firebase Authentication Admin* role. |
+| `LIKA_FIREBASE_SERVICE_ACCOUNT` | Service account key file (*Project settings › Service accounts › Generate new private key*), **encoded in base64**: `base64 -w0 key.json`, or `base64 -i key.json` on macOS. Line breaks are ignored. The JSON itself, or the path to the file, are also accepted. Its account needs the *Firebase Authentication Admin* role. |
 | `LIKA_FIREBASE_GOOGLE_CLIENT_ID`, `LIKA_FIREBASE_GOOGLE_CLIENT_SECRET` | Optional: enables "Sign in with Google". The OAuth web client of the Google provider of Firebase (*Authentication › Sign-in method › Google › Web SDK configuration*), with the redirect URI `<LIKA web URL>/auth/callback` added in Google Cloud. |
 | `FIREBASE_AUTH_EMULATOR_HOST` | `host:port` of the Auth emulator, for development and tests only: its tokens are not signed. |
 

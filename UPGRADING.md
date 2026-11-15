@@ -1,5 +1,9 @@
 # Upgrading Lika
 
+## 0.9.x → 0.10.0
+
+- `LIKA_FIREBASE_SERVICE_ACCOUNT` takes the service account key file encoded in base64 (`base64 -w0 key.json`), easier to paste in a hosting panel. The JSON itself and the path to the file still work.
+
 ## 0.8.x → 0.9.0
 
 - **PostgreSQL** is supported: build argument `DB=postgres` of `api/Dockerfile` (Gradle `-PdbPostgres`), with `DB_POSTGRES_URL`. Tables are created on start. To move existing data, export an archive from **Import / Export** and import it into the new instance.

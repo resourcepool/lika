@@ -48,7 +48,7 @@ class Firebase {
     var projectId: String? = null
     /** Web API key of the project (LIKA_FIREBASE_API_KEY) */
     var apiKey: String? = null
-    /** Service account key: path to the JSON file, or the JSON itself (LIKA_FIREBASE_SERVICE_ACCOUNT) */
+    /** Service account key file, encoded in base64 (LIKA_FIREBASE_SERVICE_ACCOUNT). Its JSON or its path are also accepted. */
     var serviceAccount: String? = null
     /** host:port of the Auth emulator, for development and tests (FIREBASE_AUTH_EMULATOR_HOST) */
     var emulatorHost: String? = null

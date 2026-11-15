@@ -22,13 +22,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator
 import org.springframework.security.oauth2.jwt.JwtClaimValidator
 import org.springframework.stereotype.Component
-import java.nio.file.Files
-import java.nio.file.Path
-import java.security.KeyFactory
-import java.security.interfaces.RSAPrivateKey
-import java.security.spec.PKCS8EncodedKeySpec
 import java.time.Instant
-import java.util.Base64
 import java.util.Date
 
 /**
@@ -46,12 +40,10 @@ class FirebaseIdentityProvider(props: AuthProperties, mapper: ObjectMapper) : Pr
 
     private val emulator: String? = fb.emulatorHost?.takeIf { it.isNotBlank() }
 
-    private data class ServiceAccount(val email: String, val key: RSAPrivateKey, val tokenUri: String)
-
     init {
         val missing = listOf("LIKA_FIREBASE_PROJECT_ID" to fb.projectId, "LIKA_FIREBASE_API_KEY" to fb.apiKey).filter { it.second.isNullOrBlank() }.map { it.first }
         check(missing.isEmpty()) { "LIKA_AUTH_PROVIDER=firebase needs ${missing.joinToString(", ")}" }
-        check(emulator != null || !fb.serviceAccount.isNullOrBlank()) { "LIKA_AUTH_PROVIDER=firebase needs LIKA_FIREBASE_SERVICE_ACCOUNT (path to, or content of, a service account key)" }
+        check(emulator != null || !fb.serviceAccount.isNullOrBlank()) { "LIKA_AUTH_PROVIDER=firebase needs LIKA_FIREBASE_SERVICE_ACCOUNT (base64 of the service account key file)" }
         check(fb.googleClientId.isNullOrBlank() == fb.googleClientSecret.isNullOrBlank()) { "Set both LIKA_FIREBASE_GOOGLE_CLIENT_ID and LIKA_FIREBASE_GOOGLE_CLIENT_SECRET, or neither" }
         if (emulator != null) logger.warn("Using the Firebase Auth emulator at {}: tokens are not signed. Never in production.", emulator)
     }
@@ -61,14 +53,7 @@ class FirebaseIdentityProvider(props: AuthProperties, mapper: ObjectMapper) : Pr
     private val apiKey: String = fb.apiKey!!
     private val identityToolkit: String = if (emulator != null) "http://$emulator/identitytoolkit.googleapis.com/v1" else "https://identitytoolkit.googleapis.com/v1"
     private val secureToken: String = if (emulator != null) "http://$emulator/securetoken.googleapis.com/v1" else "https://securetoken.googleapis.com/v1"
-    private val serviceAccount: ServiceAccount? = fb.serviceAccount?.takeIf { it.isNotBlank() }?.let { readServiceAccount(it) }
-
-    private fun readServiceAccount(value: String): ServiceAccount {
-        val json = mapper.readTree(if (value.trimStart().startsWith("{")) value else Files.readString(Path.of(value)))
-        val pem = json["private_key"].asText().replace(Regex("-----[A-Z ]+-----|\\s"), "")
-        val key = KeyFactory.getInstance("RSA").generatePrivate(PKCS8EncodedKeySpec(Base64.getDecoder().decode(pem))) as RSAPrivateKey
-        return ServiceAccount(json["client_email"].asText(), key, json.path("token_uri").asText("https://oauth2.googleapis.com/token"))
-    }
+    private val serviceAccount: ServiceAccountKey? = fb.serviceAccount?.takeIf { it.isNotBlank() }?.let { ServiceAccountKey.parse(it, mapper) }
 
     private val decoder: NimbusJwtDecoder by lazy {
         NimbusJwtDecoder.withJwkSetUri(JWKS).build().also {
