@@ -30,7 +30,19 @@ When a header lists several hosts, one per proxy, the first one is used. Registe
 Prefer a dedicated header. Reverse proxies such as Traefik (Dokploy) replace `X-Forwarded-Host` with the host they received, unless they trust the CDN's addresses: `forwardedHeaders.trustedIPs` of their entry points. Custom headers go through untouched.
 
 - **Cloudflare**: *Rules › Transform Rules › Modify Request Header*, set `X-Lika-Host` dynamically to `http.host`.
-- **CloudFront**: in the origin of each distribution, a custom header `X-Lika-Host` with its domain, e.g. `domain1.com`.
+- **CloudFront**: CloudFront sends the origin's domain as `Host` and no `X-Forwarded-Host`.
+  - One distribution per short link domain: in its origin, add the **custom header** `X-Lika-Host` with that domain, e.g. `domain1.com`.
+  - One distribution for several domains (alternate domain names): a **CloudFront Function** on *viewer request* copies the host the visitor used, and the cache policy must be **CachingDisabled**. The cache key does not include the visitor's host, so `domain1.com/slug` and `domain2.com/slug` would share their cached redirect.
+
+    ```js
+    function handler(event) {
+      var request = event.request;
+      request.headers['x-lika-host'] = { value: request.headers.host.value };
+      return request;
+    }
+    ```
+  - Redirects are sent with `Cache-Control: no-store`: with a minimum TTL of 0, every visit reaches Lika, so expiry, activation and edits apply at once. With the managed policy *CachingOptimized*, redirects are cached for its minimum TTL of 1 second.
+  - Allow the `POST` method in the cache behavior: the password form of protected links posts to the short URL.
 
 Whoever reaches the origin directly can pick the domain with this header. They only get the links of that domain, which are public anyway; password-protected links still need their password.
 
