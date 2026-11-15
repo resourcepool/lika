@@ -3,6 +3,9 @@ package li.lika.webapp
 import li.lika.webapp.support.RequestHost
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.boot.test.system.CapturedOutput
+import org.springframework.boot.test.system.OutputCaptureExtension
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
@@ -55,6 +58,13 @@ class CdnHostTest : ApiTestSupport() {
     fun `search by host uses the same host`() {
         val (host, slug) = cdnDomainWithLink()
         call(ADMIN_TOKEN, get("/api/search/slug/$slug").header("Host", origin).header("X-Forwarded-Host", host))
+    }
+
+    @Test
+    @ExtendWith(OutputCaptureExtension::class)
+    fun `links not found are only logged at debug level`(output: CapturedOutput) {
+        mvc.perform(get("/nope-${unique("s")}").header("Host", origin)).andExpect(forwardedUrl("/static/error.html"))
+        assertFalse(output.out.contains("Link not found"))
     }
 
     @Test

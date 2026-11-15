@@ -22,6 +22,13 @@ class RequestHost(private val props: LikaProperties) {
         return headers.firstNotNullOfOrNull { normalize(request.getHeader(it)) }
     }
 
+    /** The headers the host was taken from, for the logs */
+    fun describe(request: HttpServletRequest): String {
+        val headers = listOfNotNull(props.hostHeader?.takeIf { it.isNotBlank() }, FORWARDED_HOST, HOST)
+            .joinToString(", ") { "$it=${request.getHeader(it) ?: "-"}" }
+        return "${request.method} ${request.requestURI}; $headers; domain looked up: ${of(request) ?: "none"}"
+    }
+
     companion object {
         const val FORWARDED_HOST = "X-Forwarded-Host"
         const val HOST = "Host"

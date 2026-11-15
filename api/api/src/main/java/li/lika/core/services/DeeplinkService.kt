@@ -78,13 +78,13 @@ class DeeplinkService(
     @CacheEvict("deeplinks", allEntries = true)
     fun save(l: DeeplinkCreator, caller: LikaPrincipal): Deeplink {
         val domain = authorization.assertCan(caller, l.domainId, DomainRole.EDITOR)
-        val existing = if (l.id.isNullOrBlank()) null else deeplinkDao.findOne(l.id!!) ?: throw PermalinkNotFoundException()
+        val existing = if (l.id.isNullOrBlank()) null else deeplinkDao.findOne(l.id!!) ?: throw PermalinkNotFoundException("no link with id ${l.id}")
         if (existing != null) {
             // Moving or editing a link also requires managing its current domain
             try {
                 authorization.assertCanHost(caller, existing.host, DomainRole.EDITOR)
             } catch (e: InvalidDomainException) {
-                throw PermalinkNotFoundException()
+                throw PermalinkNotFoundException("link ${existing.id} is on ${existing.host}, which ${caller.name} (${caller.id}) cannot edit")
             }
         }
         return save(l, domain, caller.id, existing)
@@ -150,22 +150,25 @@ class DeeplinkService(
 
     @Cacheable("deeplinks")
     fun findOneByHostAndSlug(host: String, slug: String): Deeplink {
-        return deeplinkDao.findByHostAndSlug(host, slug) ?: throw PermalinkNotFoundException()
+        return deeplinkDao.findByHostAndSlug(host, slug) ?: throw PermalinkNotFoundException(
+            domainDao.findByHost(host)?.let { "no link /$slug on domain $host (id ${it.id})" }
+                ?: "no domain is registered for host $host (looking for /$slug)"
+        )
     }
 
     @Transactional
     fun findOneByDomainAndSlug(caller: LikaPrincipal, domainId: String, slug: String): Deeplink {
         val domain = authorization.assertCan(caller, domainId, DomainRole.VIEWER)
-        return deeplinkDao.findByHostAndSlug(domain.host, slug) ?: throw PermalinkNotFoundException()
+        return deeplinkDao.findByHostAndSlug(domain.host, slug) ?: throw PermalinkNotFoundException("no link /$slug on domain ${domain.host} (id ${domain.id})")
     }
 
     @Transactional
     fun findOne(caller: LikaPrincipal, id: String): Deeplink {
-        val link = deeplinkDao.findOne(id) ?: throw PermalinkNotFoundException()
+        val link = deeplinkDao.findOne(id) ?: throw PermalinkNotFoundException("no link with id $id")
         try {
             authorization.assertCanHost(caller, link.host, DomainRole.VIEWER)
         } catch (e: InvalidDomainException) {
-            throw PermalinkNotFoundException()
+            throw PermalinkNotFoundException("link $id is on ${link.host}, which ${caller.name} (${caller.id}) cannot read")
         }
         return link
     }
@@ -192,11 +195,11 @@ class DeeplinkService(
     @Transactional
     @CacheEvict("deeplinks", allEntries = true)
     fun deleteOne(caller: LikaPrincipal, id: String) {
-        val link = deeplinkDao.findOne(id) ?: throw PermalinkNotFoundException()
+        val link = deeplinkDao.findOne(id) ?: throw PermalinkNotFoundException("no link with id $id")
         try {
             authorization.assertCanHost(caller, link.host, DomainRole.EDITOR)
         } catch (e: InvalidDomainException) {
-            throw PermalinkNotFoundException()
+            throw PermalinkNotFoundException("link $id is on ${link.host}, which ${caller.name} (${caller.id}) cannot edit")
         }
         deeplinkDao.deleteOne(link.id)
     }
@@ -205,7 +208,7 @@ class DeeplinkService(
     @CacheEvict("deeplinks", allEntries = true)
     fun deleteBySlug(caller: LikaPrincipal, domainId: String, slug: String) {
         val domain = authorization.assertCan(caller, domainId, DomainRole.EDITOR)
-        deeplinkDao.findByHostAndSlug(domain.host, slug) ?: throw PermalinkNotFoundException()
+        deeplinkDao.findByHostAndSlug(domain.host, slug) ?: throw PermalinkNotFoundException("no link /$slug on domain ${domain.host} (id ${domain.id})")
         deeplinkDao.deleteBySlug(domain.host, slug)
     }
 

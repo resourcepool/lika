@@ -16,12 +16,23 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 import org.springframework.web.servlet.resource.NoResourceFoundException
 import jakarta.servlet.http.HttpServletRequest
+import li.lika.webapp.support.RequestHost
 import org.springframework.web.servlet.ModelAndView
 
 @ControllerAdvice
-class GlobalExceptionHandler {
+class GlobalExceptionHandler(private val requestHost: RequestHost) {
 
     private val logger = KotlinLogging.logger {}
+
+    /**
+     * Why a link or host was not found, with the headers the domain came from. Debug level, under a logger name
+     * an environment variable can enable alone: LOGGING_LEVEL_LI_LIKA_NOTFOUND=DEBUG
+     */
+    private val notFoundLogger = KotlinLogging.logger(NOT_FOUND_LOGGER)
+
+    companion object {
+        const val NOT_FOUND_LOGGER = "li.lika.notfound"
+    }
 
     @ExceptionHandler(MessageAndErrorCodeException::class)
     fun handleMessageAndErrorCodeException(ex: MessageAndErrorCodeException, request: HttpServletRequest): ResponseEntity<MessageAndErrorCodeResponse> {
@@ -76,7 +87,7 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidHostException::class)
     fun handleInvalidHostException(ex: InvalidHostException, request: HttpServletRequest): Any {
-        logger.warn("Invalid host: ${ex.message}")
+        notFoundLogger.debug { "Invalid host: ${ex.message} [${requestHost.describe(request)}]" }
         if (request.getHeader("Accept")?.contains("application/json") == true) {
             return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
@@ -87,7 +98,7 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(PermalinkNotFoundException::class)
     fun handlePermalinkNotFoundException(ex: PermalinkNotFoundException, request: HttpServletRequest): Any {
-        logger.warn("Permalink not found: ${ex.message}")
+        notFoundLogger.debug { "Link not found: ${ex.detail ?: ex.message} [${requestHost.describe(request)}]" }
         if (request.getHeader("Accept")?.contains("application/json") == true) {
             return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)

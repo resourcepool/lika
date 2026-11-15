@@ -2,6 +2,7 @@ package li.lika.webapp.controllers
 
 import jakarta.servlet.http.HttpServletRequest
 import li.lika.common.exceptions.InvalidHostException
+import li.lika.common.models.isExpired
 import li.lika.webapp.support.RequestHost
 import li.lika.common.exceptions.PermalinkNotFoundException
 import li.lika.common.models.Deeplink
@@ -63,7 +64,7 @@ class PublicLinksController(
                        @RequestParam(required = false) password: String?): ModelAndView {
         val pl = findResolvable(requestHost.of(request), rootDeeplink)
         if (pl.type != DeeplinkType.SIMPLE) {
-            throw PermalinkNotFoundException()
+            throw PermalinkNotFoundException("/${pl.slug} on ${pl.host} is a landing link: it has no password form")
         }
         if (!deeplinkService.checkPassword(pl, password)) {
             return protectedPage(pl, true)
@@ -76,7 +77,10 @@ class PublicLinksController(
      */
     private fun findResolvable(host: String?, slug: String): Deeplink {
         val pl = deeplinkService.findOneByHostAndSlug(host ?: throw InvalidHostException(), slug)
-        pl.currentTargetUrl() ?: throw PermalinkNotFoundException()
+        pl.currentTargetUrl() ?: throw PermalinkNotFoundException(
+            if (pl.isExpired()) "/$slug on $host expired on ${pl.options.expiry?.expiryDate}"
+            else "/$slug on $host is not active before ${pl.options.activation?.activationInstant}, and has no URL before activation"
+        )
         return pl
     }
 

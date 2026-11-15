@@ -44,6 +44,12 @@ Prefer a dedicated header. Reverse proxies such as Traefik (Dokploy) replace `X-
   - Redirects are sent with `Cache-Control: no-store`: with a minimum TTL of 0, every visit reaches Lika, so expiry, activation and edits apply at once. With the managed policy *CachingOptimized*, redirects are cached for its minimum TTL of 1 second.
   - Allow the `POST` method in the cache behavior: the password form of protected links posts to the short URL.
 
+To see why a link is not found, with the domain looked up and the headers it came from, set `LOGGING_LEVEL_LI_LIKA_NOTFOUND=DEBUG`:
+
+```
+Link not found: no link /epf on domain taki.li (id 3f2a…) [GET /epf; X-Lika-Host=taki.li, X-Forwarded-Host=lika.li, Host=lika.li; domain looked up: taki.li]
+```
+
 Whoever reaches the origin directly can pick the domain with this header. They only get the links of that domain, which are public anyway; password-protected links still need their password.
 
 ### Sign-in

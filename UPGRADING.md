@@ -1,5 +1,9 @@
 # Upgrading Lika
 
+## 0.11.x → 0.12.0
+
+- Links not found are no longer logged by default. `LOGGING_LEVEL_LI_LIKA_NOTFOUND=DEBUG` logs why, with the slug, the domain looked up (host and id) and the headers it came from: useful behind a CDN. See [Behind a CDN](docs/CONFIGURATION.md#behind-a-cdn).
+
 ## 0.10.x → 0.11.0
 
 - Behind a CDN rewriting the `Host` header to the origin, set `LIKA_HOST_HEADER` to a header the CDN fills with the original host (e.g. `X-Lika-Host`): slugs are looked up on that domain. See [Behind a CDN](docs/CONFIGURATION.md#behind-a-cdn).
