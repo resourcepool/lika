@@ -1,14 +1,14 @@
 # Lika - Permalink API
 
-By default, you can run the in-memory DB for dev purposes
+By default, the API runs on an in-memory database, for development. The database is chosen when building:
 
-To build with MongoDB, you need to have a MongoDB instance running and then build the project with the `dbMongo` profile:
 ```bash
-`./gradlew build -PdbMongo`
+./gradlew build -PdbSqlite     # SQLite file (DB_SQLITE_PATH)
+./gradlew build -PdbPostgres   # PostgreSQL (DB_POSTGRES_URL)
+./gradlew build -PdbMongo      # MongoDB (DB_MONGODB_CONNSTRING)
+```
 
-To build with SQLite, you need to have a file with the `dbPostgres` profile:
-```bash
-`./gradlew build -PdbSqlite`
+`Dockerfile` builds the image from source, choosing the database with the build argument `DB` (`sqlite`, `postgres`, `mongo`, `memory`); `.env.example` lists the environment variables.
 
 ## API documentation
 

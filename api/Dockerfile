@@ -1,21 +1,23 @@
 # Lika API, built from the sources: no JDK or prebuilt jar needed on the host (e.g. Dokploy).
 #   docker build -t lika-api api                         # SQLite (default)
+#   docker build -t lika-api --build-arg DB=postgres api # PostgreSQL (DB_POSTGRES_URL)
 #   docker build -t lika-api --build-arg DB=mongo api    # MongoDB
 #
 # Runtime configuration: environment variables, see docs/CONFIGURATION.md.
 # SQLite stores its file in /data: mount a volume there.
 
 FROM eclipse-temurin:21-jdk AS build
-# sqlite, mongo or memory (data lost on restart)
+# sqlite, postgres, mongo or memory (data lost on restart)
 ARG DB=sqlite
 WORKDIR /src
 COPY . .
 RUN --mount=type=cache,target=/root/.gradle \
     case "$DB" in \
       sqlite) FLAG=-PdbSqlite ;; \
+      postgres) FLAG=-PdbPostgres ;; \
       mongo) FLAG=-PdbMongo ;; \
       memory) FLAG= ;; \
-      *) echo "DB must be sqlite, mongo or memory" >&2; exit 1 ;; \
+      *) echo "DB must be sqlite, postgres, mongo or memory" >&2; exit 1 ;; \
     esac \
     && chmod +x gradlew \
     && ./gradlew --no-daemon :api:bootJar $FLAG \

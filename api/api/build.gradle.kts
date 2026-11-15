@@ -45,11 +45,13 @@ dependencies {
     if (project.hasProperty("dbMongo")) {
         runtimeOnly(project(":db-mongo"))
         println("Using MongoDB as database")
+    } else if (project.hasProperty("dbPostgres")) {
+        runtimeOnly(project(":db-postgres"))
+        println("Using PostgreSQL as database")
     } else if (project.hasProperty("dbSqlite")) {
         runtimeOnly(project(":db-sqlite"))
         println("Using SQLite as database")
     } else {
-        //runtimeOnly(project(":db-sqlite"))
         runtimeOnly(project(":db-memory"))
         println("Using Memory as database")
     }

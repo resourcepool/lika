@@ -1,62 +1,39 @@
-# Lika: API (short links, REST API, MCP server) and web interface, built from this repository.
-# Made for Dokploy (Docker Compose, with Isolated Deployments): see docs/DOKPLOY.md.
-# Elsewhere: cp .env.example .env, fill it in, then `docker compose up -d --build`.
+# Lika: API (short links, REST API, MCP server) and web interface, built from this repository,
+# for running both on one machine. On Dokploy, deploy them as two applications: docs/DOKPLOY.md.
 #
-# Domains, routed by Dokploy (Traefik):
-#   web  port 80    the web interface, e.g. lika.example.com
-#   api  port 8080  the short link domains, e.g. go.example.com, which also serve /mcp
+#   cp api/.env.example api/.env && cp web/.env.example web/.env   # then fill them in
+#   docker compose up -d --build
+#
+# Exposes the web interface on port 3000 and the API (short links) on port 8080: put a reverse proxy with TLS in front.
+# Database: SQLite in the lika-data volume. LIKA_DB=postgres or mongo builds another one, with DB_POSTGRES_URL or
+# DB_MONGODB_CONNSTRING in api/.env.
 
 services:
   api:
     build:
       context: ./api
       args:
-        # sqlite (default) or mongo
         DB: ${LIKA_DB:-sqlite}
     restart: unless-stopped
-    expose:
-      - "8080"
+    env_file: ./api/.env
+    ports:
+      - "8080:8080"
     volumes:
       - lika-data:/data
-    environment:
-      LIKA_WEB_URL: ${LIKA_WEB_URL:?Set LIKA_WEB_URL, the public URL of the web interface}
-      LIKA_PUBLIC_API_URL: ${LIKA_PUBLIC_API_URL:-}
-      LIKA_SETUP_TOKEN: ${LIKA_SETUP_TOKEN:-}
-      LIKA_JWT_SECRET: ${LIKA_JWT_SECRET:-}
-      LIKA_AUTH_PROVIDER: ${LIKA_AUTH_PROVIDER:-local}
-      LIKA_KEYCLOAK_URL: ${LIKA_KEYCLOAK_URL:-}
-      LIKA_KEYCLOAK_REALM: ${LIKA_KEYCLOAK_REALM:-}
-      LIKA_KEYCLOAK_CLIENT_ID: ${LIKA_KEYCLOAK_CLIENT_ID:-}
-      LIKA_KEYCLOAK_CLIENT_SECRET: ${LIKA_KEYCLOAK_CLIENT_SECRET:-}
-      LIKA_KEYCLOAK_LABEL: ${LIKA_KEYCLOAK_LABEL:-Keycloak}
-      LIKA_FIREBASE_PROJECT_ID: ${LIKA_FIREBASE_PROJECT_ID:-}
-      LIKA_FIREBASE_API_KEY: ${LIKA_FIREBASE_API_KEY:-}
-      LIKA_FIREBASE_SERVICE_ACCOUNT: ${LIKA_FIREBASE_SERVICE_ACCOUNT:-}
-      LIKA_FIREBASE_GOOGLE_CLIENT_ID: ${LIKA_FIREBASE_GOOGLE_CLIENT_ID:-}
-      LIKA_FIREBASE_GOOGLE_CLIENT_SECRET: ${LIKA_FIREBASE_GOOGLE_CLIENT_SECRET:-}
-      LIKA_MCP_ALLOWED_ORIGINS: ${LIKA_MCP_ALLOWED_ORIGINS:-}
-      MAILJET_API_KEY: ${MAILJET_API_KEY:-}
-      MAILJET_API_SECRET: ${MAILJET_API_SECRET:-}
-      MAIL_FROM: ${MAIL_FROM:-}
-      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Lika}
-      JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=75}
-      # LIKA_DB=mongo only
-      DB_MONGODB_CONNSTRING: ${DB_MONGODB_CONNSTRING:-}
-      DB_MONGODB_APPDATABASE: ${DB_MONGODB_APPDATABASE:-lika}
 
   web:
     build:
       context: ./web
     restart: unless-stopped
-    expose:
-      - "80"
+    env_file: ./web/.env
     environment:
+      # The API on the network of this compose project, whatever api/.env.example suggests
       LIKA_API_URL: http://api:8080
-      LIKA_SESSION_SECRET: ${LIKA_SESSION_SECRET:?Set LIKA_SESSION_SECRET, 32+ random characters}
+    ports:
+      - "3000:80"
     depends_on:
       api:
         condition: service_healthy
 
 volumes:
-  # SQLite database (LIKA_DB=sqlite): back it up with Dokploy's volume backups
   lika-data:

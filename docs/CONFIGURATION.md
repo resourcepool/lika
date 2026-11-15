@@ -2,7 +2,7 @@
 
 Every setting of Lika, as environment variables. The API (`api` image) and the web interface (`www` image) read them when they start.
 
-`docker-compose.yml` at the root of the repository builds and runs both, from `api/Dockerfile` (build argument `DB`: `sqlite`, `mongo` or `memory`) and `web/Dockerfile`; [.env.example](../.env.example) lists its variables. See [DOKPLOY.md](DOKPLOY.md).
+`api/Dockerfile` and `web/Dockerfile` build them from source; [`api/.env.example`](../api/.env.example) and [`web/.env.example`](../web/.env.example) list their variables. See [DOKPLOY.md](DOKPLOY.md), or `docker-compose.yml` to run both on one machine.
 
 ## API
 
@@ -88,11 +88,14 @@ See [MCP.md](MCP.md).
 
 ### Database
 
-The image tag chooses the database: `-sqlite` or `-mongo`.
+The database is chosen when building: build argument `DB` of `api/Dockerfile` (`sqlite` by default, `postgres`, `mongo`, or `memory` which loses everything on restart), or Gradle flag `-PdbSqlite`, `-PdbPostgres`, `-PdbMongo`. The images of the CI are tagged `-sqlite`, `-mongo` or `-memory`. Tables and collections are created and updated on start.
 
 | Variable | Description |
 |---|---|
-| `DB_SQLITE_PATH` | SQLite file, default `./data/db.sqlite`. Mount it on a volume. |
+| `DB_SQLITE_PATH` | SQLite file: `/data/lika.db` in the image built by `api/Dockerfile` (mount a volume on `/data`), `./data/db.sqlite` otherwise |
+| `DB_POSTGRES_URL` | PostgreSQL: `jdbc:postgresql://host:5432/lika`, or `postgresql://user:password@host:5432/lika` (as Dokploy shows it; URL-encode special characters of the password) |
+| `DB_POSTGRES_USERNAME`, `DB_POSTGRES_PASSWORD` | Override the credentials of the URL |
+| `DB_POSTGRES_MAXIMUMPOOLSIZE` | Connections of the pool, default 10 |
 | `DB_MONGODB_CONNSTRING` | MongoDB connection string |
 | `DB_MONGODB_APPDATABASE` | MongoDB database |
 

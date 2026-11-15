@@ -1,5 +1,11 @@
 # Upgrading Lika
 
+## 0.8.x → 0.9.0
+
+- **PostgreSQL** is supported: build argument `DB=postgres` of `api/Dockerfile` (Gradle `-PdbPostgres`), with `DB_POSTGRES_URL`. Tables are created on start. To move existing data, export an archive from **Import / Export** and import it into the new instance.
+- `api/.env.example` and `web/.env.example` list the variables of each image; the root `.env.example` is gone. `docker-compose.yml` now reads `api/.env` and `web/.env`, and publishes the web interface on port 3000 and the API on port 8080.
+- [docs/DOKPLOY.md](docs/DOKPLOY.md) deploys the API and the web interface as two Dokploy applications.
+
 ## 0.7.x → 0.8.0
 
 Nothing to migrate. New ways to deploy:

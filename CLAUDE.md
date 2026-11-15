@@ -61,8 +61,8 @@ npm run build       # Standalone server in .next/standalone
   - `common`: Shared models, DTOs, and interfaces
   - `client-http`: HTTP client implementations for API consumption
   - `security`: Authentication and authorization components
-  - `db-memory`, `db-sqlite`, `db-mongo`: Pluggable database implementations
-- **Database Abstraction**: DAO pattern with multiple backend support (H2/SQLite/MongoDB)
+  - `db-memory`, `db-sqlite`, `db-postgres`, `db-mongo`: Pluggable database implementations
+- **Database Abstraction**: DAO pattern with multiple backend support (H2/SQLite/PostgreSQL/MongoDB); `db-memory`, `db-sqlite` and `db-postgres` share the same JPA entities
 - **Core Models**: `Deeplink`, `Domain`, `User`, `ApiKey` with support for advanced features like activation scheduling and expiry dates
 - **Users and access**: users sign in through the identity provider chosen by `LIKA_AUTH_PROVIDER` (`local`, `keycloak`, `firebase`: `IdentityProvider` implementations in `api/.../core/services/auth`, one bean per value). Lika keeps users, invitations and rights in all cases; external accounts are linked by `externalId` or verified email, and only the `lika` claim is written to the provider; rights are the `lika` claim `{v, admin, domains: {domainId: viewer|editor|manager}}` of their token. API keys are for applications (viewer/editor per domain, or admin). Every check goes through `AuthorizationService`; `CredentialsService` resolves a bearer (JWT → user, else key secret). A token whose `v` differs from the user's version is refused (`token-stale`).
 - **MCP server**: `POST /mcp`, stateless Streamable HTTP implemented by hand (`core/services/mcp`: `McpServer` JSON-RPC, `McpTools` filtered per caller, `McpSkills` generated per caller as `lika://skills/*` resources). User API keys (`ApiKey.userId`, `lika_u_…`) act with their user's live rights, `/mcp` only (`role_mcp`). Integration doc: `docs/MCP.md`.
@@ -82,13 +82,13 @@ npm run build       # Standalone server in .next/standalone
 - `web/AGENTS.md`: this Next.js version differs from older ones; read `web/node_modules/next/dist/docs/` before changing framework code
 
 ### Deployment
-- `docker-compose.yml` (root) builds both images from source: `api/Dockerfile` (multi-stage, build arg `DB`) and `web/Dockerfile`; `.env.example`, `docs/DOKPLOY.md`
+- `api/Dockerfile` (multi-stage, build arg `DB`: sqlite|postgres|mongo|memory) and `web/Dockerfile` build from source, each with its `.env.example`; `docs/DOKPLOY.md` deploys them as two Dokploy applications; `docker-compose.yml` runs both on one machine
 - `api/api/Dockerfile` packages a jar prebuilt by CI (GitLab/GitHub workflows)
 
 ### Database Selection
 The API supports three database backends controlled by Gradle properties:
 - Default: In-memory H2 (for development/testing)
-- Production options: SQLite (`-PdbSqlite`) or MongoDB (`-PdbMongo`)
+- Production options: SQLite (`-PdbSqlite`), PostgreSQL (`-PdbPostgres`) or MongoDB (`-PdbMongo`)
 
 ### Key Business Logic
 - **Permalink Types**: Simple links with optional advanced features (activation scheduling, landing pages, expiry)

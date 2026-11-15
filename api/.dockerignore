@@ -4,3 +4,6 @@
 **/.idea
 **/*.iml
 data
+.env
+.env.*
+!.env.example
