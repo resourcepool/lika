@@ -30,7 +30,7 @@ npm run lint && npm run typecheck
 npm test              # unit tests (Vitest)
 
 # End-to-end (Playwright), against the API above with its default configuration
-# and LIKA_SETUP_TOKEN=e2e-setup-token: the tests create the first admin if needed
+# (dev profile) and LIKA_SETUP_TOKEN=e2e-setup-token: the tests create the first admin if needed
 npm run build && cp -r .next/static .next/standalone/.next/
 LIKA_API_URL=http://localhost:8080 LIKA_SESSION_SECRET=... PORT=3000 node .next/standalone/server.js &
 npx playwright install chromium   # or E2E_BROWSER_CHANNEL=chrome to use the installed Chrome

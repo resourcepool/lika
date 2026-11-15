@@ -94,14 +94,11 @@ The image tag chooses the database: `-sqlite` or `-mongo`.
 | `DB_MONGODB_CONNSTRING` | MongoDB connection string |
 | `DB_MONGODB_APPDATABASE` | MongoDB database |
 
-### Defaults to override in production
+### Development profile
 
-Without an active Spring profile, the API loads `application-default.yml`, made for development. It declares:
+`SPRING_PROFILES_ACTIVE=dev` loads `application-dev.yml`. It declares the domains `localhost:8080` and `127.0.0.1:8080`, sample links, open CORS, and the deprecated root key `lika-client-secret` as an admin API key. `./gradlew :api:bootRun` and the tests use it. **Never in production**: the value of that key is public.
 
-- the domains `localhost:8080` and `127.0.0.1:8080`, and sample links;
-- the deprecated root key `lika-client-secret`, which becomes an **admin API key with a public value**.
-
-In production, start with `SPRING_PROFILES_ACTIVE=prod` and your own configuration, or at least set `SECURITY_DEFAULTGLOBALACCESSTOKEN=` and `SECURITY_DEFAULTGLOBALPUBLICREADACCESSTOKEN=` (empty) so that no such key is created. Keys created by earlier versions must be deleted under **API Keys**.
+Images start without it. Lika < 0.7 applied these defaults whenever no profile was active, so an existing database may hold an account with the public token `lika-client-secret`. When upgrading, it is not migrated to an API key.
 
 ## Web interface
 
@@ -120,7 +117,7 @@ The server refuses to start without the required ones. Behind a TLS-terminating 
 | `E2E_BASE_URL` | `http://localhost:3000` | Web interface under test |
 | `E2E_API_URL` | `http://localhost:8080` | Its API |
 | `E2E_PROVIDER` | `local` | Provider of the API: `local` and `firebase` run the password specs, `keycloak` the single sign-on specs |
-| `E2E_ADMIN_TOKEN` | `lika-client-secret` | Admin API key, to set up data |
+| `E2E_ADMIN_TOKEN` | `lika-client-secret` | Admin API key, to set up data: the root key of the `dev` profile |
 | `E2E_SETUP_TOKEN` | `e2e-setup-token` | `LIKA_SETUP_TOKEN` of the API |
 | `E2E_ADMIN_EMAIL`, `E2E_ADMIN_PASSWORD` | `admin@e2e.test`, `e2e password 123` | First admin, created if needed |
 | `E2E_KEYCLOAK_URL` | `http://localhost:8180` | Keycloak of the single sign-on specs |

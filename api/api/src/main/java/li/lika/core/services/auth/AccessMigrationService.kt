@@ -45,6 +45,11 @@ class AccessMigrationService(
     }
 
     private fun migrate(account: Account, domainIds: Set<String>, allDomainIds: List<String>) {
+        if (isPublicDevToken(account.defaultAccessToken) || isPublicDevToken(account.defaultPublicReadAccessToken)) {
+            // Lika < 0.7.0 created this account from its development defaults, even in production
+            logger.warn("Not migrating account {}: its tokens are the public development ones. Create API keys in the web app instead.", account.name)
+            return
+        }
         val readDomains = if (account.global) allDomainIds else domainIds
         if (account.global) {
             createKey(account.defaultAccessToken, account.name, admin = true)
@@ -71,9 +76,17 @@ class AccessMigrationService(
         }
     }
 
+    /** Tokens of application-dev.yml, which earlier versions applied whenever no profile was active */
+    private fun isPublicDevToken(token: String): Boolean =
+        token in PUBLIC_DEV_TOKENS && token != securityProperties.defaultGlobalAccessToken && token != securityProperties.defaultGlobalPublicReadAccessToken
+
     private fun createKey(secret: String, name: String, admin: Boolean = false, domains: Map<String, DomainRole> = emptyMap()) {
         val hash = Secrets.sha256(secret)
         if (keyDao.findBySecretHash(hash) != null) return
         keyDao.save(ApiKey(UUID.randomUUID().toString(), name, admin, domains, hash, Secrets.displayPrefix(secret)))
+    }
+
+    companion object {
+        val PUBLIC_DEV_TOKENS = setOf("lika-client-secret", "lika-client-read")
     }
 }

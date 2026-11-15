@@ -82,3 +82,9 @@ dependencies {
     testImplementation("org.testcontainers:junit-jupiter")
 
 }
+
+// The dev profile (application-dev.yml: sample domains and links, root API key) for local runs only.
+// Images start without it.
+tasks.named<org.springframework.boot.gradle.tasks.run.BootRun>("bootRun") {
+    systemProperty("spring.profiles.active", System.getenv("SPRING_PROFILES_ACTIVE") ?: "dev")
+}

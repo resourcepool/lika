@@ -19,7 +19,8 @@ cd api
 ./gradlew build
 
 # Run the application (default uses in-memory H2 database)
-# Needs JDK 21 (Kotlin 1.9 fails on 25). The first admin is created with the setup token printed in the logs.
+# Needs JDK 21 (Kotlin 1.9 fails on 25). bootRun and the tests use the dev profile (application-dev.yml);
+# images start without it. The first admin is created with the setup token printed in the logs.
 ./gradlew :api:bootRun
 
 # Run with SQLite database

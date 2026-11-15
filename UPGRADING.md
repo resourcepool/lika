@@ -34,7 +34,11 @@ New variables, all described in [docs/CONFIGURATION.md](docs/CONFIGURATION.md):
 
 The `www` image needs no new variable.
 
-Check that the deprecated root key of the development configuration (`lika-client-secret`) is not active in production: see [Defaults to override in production](docs/CONFIGURATION.md#defaults-to-override-in-production).
+The development defaults (sample domains and links, root key `lika-client-secret`) moved to the `dev` profile (`application-dev.yml`). Before 0.7, they applied whenever no profile was active, production included. Images now start without them:
+
+- An account holding the public token `lika-client-secret` or `lika-client-read` is not migrated to an API key. If you really use these values, set them explicitly with `SECURITY_DEFAULTGLOBALACCESSTOKEN`, then replace them with real keys.
+- The standard domains `localhost:8080` and `127.0.0.1:8080` stay in the database if they were created; delete them in **Domains** if you do not use them.
+- To run the jar with the development defaults: `SPRING_PROFILES_ACTIVE=dev`.
 
 ### Identity providers
 

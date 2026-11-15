@@ -56,8 +56,9 @@ test-web:
   variables:
     LIKA_API_URL: http://localhost:8080
     LIKA_SESSION_SECRET: ci-only-session-secret-not-used-anywhere-else
-    # Read by the API: lets the tests create the first admin
+    # Read by the API: lets the tests create the first admin, and loads the sample data and root key the tests use
     LIKA_SETUP_TOKEN: e2e-setup-token
+    SPRING_PROFILES_ACTIVE: dev
   cache:
     key:
       files:

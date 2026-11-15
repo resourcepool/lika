@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.test.context.ActiveProfiles
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.ResultActions
@@ -14,10 +15,11 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import java.util.UUID
 
 /**
- * Runs against the in-memory database seeded from application-default.yml.
+ * Runs against the in-memory database seeded from application-dev.yml.
  * Tests share the context: each one creates its own users, keys and domains with unique names.
  */
 @SpringBootTest(properties = ["lika.auth.setup-token=${ApiTestSupport.SETUP_TOKEN}"])
+@ActiveProfiles("dev")
 @AutoConfigureMockMvc
 abstract class ApiTestSupport {
 
