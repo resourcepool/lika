@@ -13,8 +13,4 @@ class TransactionHandler {
         return supplier.get()
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    fun <T> runInNewTransaction(supplier: Supplier<T>): T {
-        return supplier.get()
-    }
 }

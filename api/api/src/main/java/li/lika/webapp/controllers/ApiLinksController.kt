@@ -4,13 +4,12 @@ import li.lika.common.models.Deeplink
 import li.lika.common.models.DeeplinkCreator
 import li.lika.common.models.dtos.*
 import li.lika.core.services.DeeplinkService
-import li.lika.security.models.AccessTokenAuthentication
+import li.lika.common.security.LikaPrincipal
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
-import java.security.Principal
 
 /**
- * Links of the domains the caller owns or was granted (every domain for a global account).
+ * Links of the domains the caller has a role on (every domain for an admin).
  * /api/admin/links is kept for compatibility: it serves the same endpoints, restricted to admins.
  */
 @RequestMapping("/api/links", "/api/admin/links")
@@ -18,48 +17,48 @@ import java.security.Principal
 class ApiLinksController(private val deeplinkService: DeeplinkService) {
 
     @GetMapping("/sync")
-    fun getAll(@RequestParam domainId: String, @AuthenticationPrincipal p: Principal): List<Deeplink> {
-        return deeplinkService.getAll(p as AccessTokenAuthentication, domainId)
+    fun getAll(@RequestParam domainId: String, @AuthenticationPrincipal p: LikaPrincipal): List<Deeplink> {
+        return deeplinkService.getAll(p, domainId)
     }
 
     /**
      * Without domainId, lists links across every domain the caller can access.
      */
     @GetMapping
-    fun getPage(@RequestParam(required = false) domainId: String?, @RequestParam params: Map<String, Any>, @AuthenticationPrincipal p: Principal): PageResponse<Deeplink> {
-        return deeplinkService.getPage(p as AccessTokenAuthentication, domainId, PageRequest.parseParams(params))
+    fun getPage(@RequestParam(required = false) domainId: String?, @RequestParam params: Map<String, Any>, @AuthenticationPrincipal p: LikaPrincipal): PageResponse<Deeplink> {
+        return deeplinkService.getPage(p, domainId, PageRequest.parseParams(params))
     }
 
     @GetMapping("{id}")
-    fun getOneById(@PathVariable id: String, @AuthenticationPrincipal p: Principal): Deeplink {
-        return deeplinkService.findOne(p as AccessTokenAuthentication, id)
+    fun getOneById(@PathVariable id: String, @AuthenticationPrincipal p: LikaPrincipal): Deeplink {
+        return deeplinkService.findOne(p, id)
     }
 
     @GetMapping("slug/{slug}")
-    fun assertSlugAvailable(@PathVariable slug: String, @RequestParam domainId: String, @AuthenticationPrincipal p: Principal) {
-        deeplinkService.assertSlugAvailable(p as AccessTokenAuthentication, domainId, slug)
+    fun assertSlugAvailable(@PathVariable slug: String, @RequestParam domainId: String, @AuthenticationPrincipal p: LikaPrincipal) {
+        deeplinkService.assertSlugAvailable(p, domainId, slug)
     }
 
     @PostMapping
-    fun create(@RequestBody pl: DeeplinkCreator, @AuthenticationPrincipal p: Principal): Deeplink {
+    fun create(@RequestBody pl: DeeplinkCreator, @AuthenticationPrincipal p: LikaPrincipal): Deeplink {
         pl.id = null
-        return deeplinkService.save(pl, p as AccessTokenAuthentication)
+        return deeplinkService.save(pl, p)
     }
 
     @PutMapping
-    fun edit(@RequestBody pl: DeeplinkCreator, @AuthenticationPrincipal p: Principal): Deeplink {
+    fun edit(@RequestBody pl: DeeplinkCreator, @AuthenticationPrincipal p: LikaPrincipal): Deeplink {
         require(!pl.id.isNullOrBlank()) { "Link id is required" }
-        return deeplinkService.save(pl, p as AccessTokenAuthentication)
+        return deeplinkService.save(pl, p)
     }
 
     @DeleteMapping("/{id}")
-    fun delete(@PathVariable id: String, @AuthenticationPrincipal p: Principal) {
-        deeplinkService.deleteOne(p as AccessTokenAuthentication, id)
+    fun delete(@PathVariable id: String, @AuthenticationPrincipal p: LikaPrincipal) {
+        deeplinkService.deleteOne(p, id)
     }
 
     @DeleteMapping("/slug/{slug}")
-    fun delete(@PathVariable slug: String, @RequestParam domainId: String, @AuthenticationPrincipal p: Principal) {
-        deeplinkService.deleteBySlug(p as AccessTokenAuthentication, domainId, slug)
+    fun delete(@PathVariable slug: String, @RequestParam domainId: String, @AuthenticationPrincipal p: LikaPrincipal) {
+        deeplinkService.deleteBySlug(p, domainId, slug)
     }
 }
 

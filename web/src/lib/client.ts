@@ -11,6 +11,9 @@ export class ApiError extends Error {
   }
 }
 
+/** Error codes of the /bff route meaning the browser is no longer signed in */
+const SESSION_OVER = ["session-ended", "not-signed-in"]
+
 type Query = Record<string, string | number | boolean | undefined | null>
 
 export function withQuery(path: string, query?: Query): string {
@@ -36,15 +39,15 @@ export async function api<T = void>(
     headers: init.body === undefined ? undefined : { "Content-Type": "application/json" },
     body: init.body === undefined ? undefined : JSON.stringify(init.body),
   })
-  if (response.status === 401 && typeof window !== "undefined") {
-    // The key was revoked: reload everything from the sign-in page
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-    window.location.assign("/signin?expired=1")
-  }
   const text = await response.text()
   const data = text ? safeJson(text) : undefined
   if (!response.ok) {
     const error = data as { message?: string; errorCode?: string } | undefined
+    if (response.status === 401 && SESSION_OVER.includes(error?.errorCode ?? "") && typeof window !== "undefined") {
+      // Signed out elsewhere, disabled, or the session expired: reload everything from the sign-in page
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign("/signin?expired=1")
+    }
     throw new ApiError(response.status, error?.message ?? `Request failed (${response.status})`, error?.errorCode)
   }
   return data as T

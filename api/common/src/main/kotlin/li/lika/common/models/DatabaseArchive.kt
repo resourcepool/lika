@@ -8,6 +8,7 @@ data class DeeplinkArchiveItem(
     // Since v2
     var metadata: Map<String, String> = emptyMap(),
     var passwordHash: String? = null,
+    /** v2: account name. Since v3: email of the user, or name of the API key */
     var createdBy: String? = null,
     var createdDateTime: String? = null,
     var lastUpdateDateTime: String? = null
@@ -19,13 +20,14 @@ data class DomainArchiveItem(
     var apiBaseUrl: String = "",
     var landingBaseUrl: String? = null,
     var links: List<DeeplinkArchiveItem> = emptyList(),
-    // Since v2: name of the owning account, null for system domains
+    // v2 only: name of the owning account, null for system domains
     var owner: String? = null
 ) {
     companion object
 
 }
 
+/** v1 and v2 only: accounts became API keys in v3 */
 data class AccountArchiveItem(
     var name: String = "",
     var root: Boolean = false,
@@ -40,14 +42,42 @@ data class AccountArchiveItem(
     companion object
 }
 
+data class UserArchiveItem(
+    var email: String = "",
+    var name: String = "",
+    var status: UserStatus = UserStatus.ACTIVE,
+    var admin: Boolean = false,
+    /** Role per domain host */
+    var domains: Map<String, DomainRole> = emptyMap(),
+    var passwordHash: String? = null,
+    var createdAt: String? = null
+)
+
+data class ApiKeyArchiveItem(
+    var name: String = "",
+    var admin: Boolean = false,
+    /** Role per domain host */
+    var domains: Map<String, DomainRole> = emptyMap(),
+    var secretHash: String = "",
+    var prefix: String = "",
+    var createdAt: String? = null,
+    var expiresAt: String? = null,
+    /** Email of the owner of a user API key */
+    var user: String? = null
+)
+
 data class DatabaseArchive(
+    // v1 and v2 only
     var accounts: List<AccountArchiveItem> = emptyList(),
     // Since v2
     var version: Int = 1,
-    var domains: List<DomainArchiveItem> = emptyList()
+    var domains: List<DomainArchiveItem> = emptyList(),
+    // Since v3
+    var users: List<UserArchiveItem> = emptyList(),
+    var apiKeys: List<ApiKeyArchiveItem> = emptyList()
 ) {
     companion object {
-        const val CURRENT_VERSION = 2
+        const val CURRENT_VERSION = 3
     }
 }
 
@@ -61,7 +91,8 @@ data class ImportCounts(var created: Int = 0, var updated: Int = 0, var skipped:
 data class ImportReport(
     val dryRun: Boolean,
     val conflictMode: ImportConflictMode,
-    val accounts: ImportCounts = ImportCounts(),
+    val users: ImportCounts = ImportCounts(),
+    val apiKeys: ImportCounts = ImportCounts(),
     val domains: ImportCounts = ImportCounts(),
     val links: ImportCounts = ImportCounts()
 )

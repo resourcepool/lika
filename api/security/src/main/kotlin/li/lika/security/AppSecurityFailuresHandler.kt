@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import li.lika.security.exceptions.MessageAndErrorCodeSecurityException
-import li.lika.security.exceptions.NoTokenProvidedException
 import li.lika.security.models.AuthenticationExceptionMessage
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -30,13 +29,7 @@ class AppSecurityFailuresHandler(private val mapper: ObjectMapper): Authenticati
     }
 
     private fun getJsonMessageOnAccessDenied(httpStatus: HttpStatus, ex: RuntimeException, mapper: ObjectMapper): String {
-        val error: AuthenticationExceptionMessage?
-        if (ex is NoTokenProvidedException) {
-            error = AuthenticationExceptionMessage(httpStatus.value(), ex.message?: "An authentication error occurred", NoTokenProvidedException.ERROR_CODE)
-        } else {
-            error = AuthenticationExceptionMessage(httpStatus.value(),"Access Denied", "security.access.denied")
-        }
-        return mapper.writeValueAsString(error)
+        return mapper.writeValueAsString(AuthenticationExceptionMessage(httpStatus.value(), "Access Denied", "security.access.denied"))
     }
 
     override fun onAuthenticationFailure(
@@ -45,8 +38,9 @@ class AppSecurityFailuresHandler(private val mapper: ObjectMapper): Authenticati
         ex: AuthenticationException
     ) {
         response.contentType = MediaType.APPLICATION_JSON.toString()
-        response.status = HttpStatus.UNAUTHORIZED.value()
-        val error = getJsonMessageOnAuthFailed(HttpStatus.UNAUTHORIZED, ex, mapper)
+        val status = HttpStatus.valueOf((ex as? MessageAndErrorCodeSecurityException)?.status ?: 401)
+        response.status = status.value()
+        val error = getJsonMessageOnAuthFailed(status, ex, mapper)
         response.writer.write(error)
     }
 
@@ -56,12 +50,8 @@ class AppSecurityFailuresHandler(private val mapper: ObjectMapper): Authenticati
         ex: AccessDeniedException
     ) {
         response.contentType = MediaType.APPLICATION_JSON.toString()
-        if (ex is NoTokenProvidedException) {
-            response.status = HttpStatus.UNAUTHORIZED.value()
-        } else {
-            response.status = HttpStatus.FORBIDDEN.value()
-        }
-        val error = getJsonMessageOnAccessDenied(HttpStatus.valueOf(response.status), ex, mapper)
+        response.status = HttpStatus.FORBIDDEN.value()
+        val error = getJsonMessageOnAccessDenied(HttpStatus.FORBIDDEN, ex, mapper)
         response.writer.write(error)
     }
 }

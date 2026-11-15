@@ -5,25 +5,25 @@ import li.lika.common.models.Deeplink
 import li.lika.common.models.hideTarget
 import li.lika.common.models.isPasswordProtected
 import li.lika.core.services.DeeplinkService
-import li.lika.core.services.DomainAccessService
-import li.lika.security.models.AccessTokenAuthentication
+import li.lika.common.models.DomainRole
+import li.lika.core.services.AuthorizationService
+import li.lika.common.security.LikaPrincipal
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
-import java.security.Principal
 
 /**
- * Read-only lookups, also available to read tokens.
+ * Read-only lookups, available to viewers.
  */
 @RequestMapping("/api/search")
 @RestController
 class ApiSearchController(
     private val deeplinkService: DeeplinkService,
-    private val domainAccess: DomainAccessService
+    private val authorization: AuthorizationService
 ) {
 
     @GetMapping("/slug/suggestions/{searchStr}")
-    fun getSlugSuggestions(@PathVariable searchStr: String, @RequestParam domainId: String, @AuthenticationPrincipal p: Principal): List<String> {
-        return deeplinkService.suggestSlugs(p as AccessTokenAuthentication, domainId, searchStr)
+    fun getSlugSuggestions(@PathVariable searchStr: String, @RequestParam domainId: String, @AuthenticationPrincipal p: LikaPrincipal): List<String> {
+        return deeplinkService.suggestSlugs(p, domainId, searchStr)
     }
 
     /**
@@ -34,9 +34,9 @@ class ApiSearchController(
                @RequestParam(required = false) domainId: String?,
                @RequestParam(required = false) password: String?,
                @RequestHeader(name="Host", required = false) host: String?,
-               @AuthenticationPrincipal p: Principal): Deeplink {
-        val caller = p as AccessTokenAuthentication
-        val d = domainId ?: domainAccess.assertCanReadHost(caller, host?.trim()?.lowercase() ?: "").id!!
+               @AuthenticationPrincipal p: LikaPrincipal): Deeplink {
+        val caller = p
+        val d = domainId ?: authorization.assertCanHost(caller, host?.trim()?.lowercase() ?: "", DomainRole.VIEWER).id!!
         val deepLink = deeplinkService.findOneByDomainAndSlug(caller, d, slug)
         if (deepLink.isPasswordProtected()) {
             if (password.isNullOrBlank()) {

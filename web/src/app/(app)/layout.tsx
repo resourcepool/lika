@@ -5,9 +5,9 @@ import { AppSidebar } from "@/components/app/app-sidebar"
 import { SessionProvider } from "@/components/app/session-context"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 
-async function apiVersion(token: string): Promise<string | undefined> {
+async function apiVersion(): Promise<string | undefined> {
   try {
-    const response = await likaFetch("/public/build", token)
+    const response = await likaFetch("/public/build")
     return response.ok ? ((await response.json()) as { version?: string }).version : undefined
   } catch {
     return undefined
@@ -19,9 +19,9 @@ export default async function AppLayout({ children }: LayoutProps<"/">) {
   if (!session) {
     redirect("/signin")
   }
-  const version = await apiVersion(session.token)
+  const version = await apiVersion()
   return (
-    <SessionProvider value={{ admin: session.admin, accountId: session.accountId, accountName: session.accountName }}>
+    <SessionProvider user={session.user} claims={session.claims}>
       <SidebarProvider>
         <AppSidebar version={version} />
         <SidebarInset className="min-w-0">{children}</SidebarInset>

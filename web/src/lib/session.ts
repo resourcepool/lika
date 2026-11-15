@@ -3,13 +3,18 @@ import { EncryptJWT, jwtDecrypt } from "jose"
 import { cookies } from "next/headers"
 import { sessionSecret } from "@/lib/env"
 import { SESSION_COOKIE, SESSION_MAX_AGE } from "@/lib/session-cookie"
+import type { AuthTokens, LikaClaims } from "@/lib/types"
+
+export type SessionUser = { id: string; email: string; name: string }
 
 export type Session = {
-  /** Read-write API key of the account */
-  token: string
-  admin: boolean
-  accountId?: string
-  accountName?: string
+  accessToken: string
+  refreshToken: string
+  /** Epoch milliseconds */
+  expiresAt: number
+  user: SessionUser
+  /** Rights when the access token was issued. The API enforces the current ones. */
+  claims: LikaClaims
 }
 
 let cachedKey: { secret: string; key: Uint8Array } | undefined
@@ -23,11 +28,36 @@ async function key(): Promise<Uint8Array> {
   return cachedKey.key
 }
 
+export function sessionFromTokens(tokens: AuthTokens, now = Date.now()): Session {
+  const { user } = tokens
+  return {
+    accessToken: tokens.accessToken,
+    refreshToken: tokens.refreshToken,
+    expiresAt: now + tokens.expiresIn * 1000,
+    user: { id: user.id, email: user.email, name: user.name },
+    claims: { v: user.version, admin: user.admin, domains: user.domains },
+  }
+}
+
 export async function encryptSession(session: Session): Promise<string> {
-  return new EncryptJWT({ ...session })
+  return encryptPayload(session)
+}
+
+/** Encrypted with the session secret: only this server reads it */
+export async function encryptPayload(payload: object): Promise<string> {
+  return new EncryptJWT({ ...payload })
     .setProtectedHeader({ alg: "dir", enc: "A256GCM" })
     .setIssuedAt()
     .encrypt(await key())
+}
+
+export async function decryptPayload(value: string | undefined): Promise<Record<string, unknown> | null> {
+  if (!value) return null
+  try {
+    return (await jwtDecrypt(value, await key())).payload
+  } catch {
+    return null
+  }
 }
 
 export async function decryptSession(value: string | undefined): Promise<Session | null> {
@@ -36,15 +66,12 @@ export async function decryptSession(value: string | undefined): Promise<Session
   }
   try {
     const { payload } = await jwtDecrypt(value, await key())
-    if (typeof payload.token !== "string") {
+    const { accessToken, refreshToken, expiresAt, user, claims } = payload as Partial<Session>
+    if (typeof accessToken !== "string" || typeof refreshToken !== "string" || typeof expiresAt !== "number" || !user?.id || !claims) {
+      // Includes the API-key sessions of Lika 0.6
       return null
     }
-    return {
-      token: payload.token,
-      admin: payload.admin === true,
-      accountId: typeof payload.accountId === "string" ? payload.accountId : undefined,
-      accountName: typeof payload.accountName === "string" ? payload.accountName : undefined,
-    }
+    return { accessToken, refreshToken, expiresAt, user, claims }
   } catch {
     // Tampered cookie, or encrypted with another secret
     return null

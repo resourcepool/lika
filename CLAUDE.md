@@ -19,6 +19,7 @@ cd api
 ./gradlew build
 
 # Run the application (default uses in-memory H2 database)
+# Needs JDK 21 (Kotlin 1.9 fails on 25). The first admin is created with the setup token printed in the logs.
 ./gradlew :api:bootRun
 
 # Run with SQLite database
@@ -26,6 +27,8 @@ cd api
 
 # Run with MongoDB database  
 ./gradlew :api:bootRun -PdbMongo
+
+# Keycloak / Firebase providers: see dev/README.md. Every env variable: docs/CONFIGURATION.md
 
 # Run tests
 ./gradlew test
@@ -45,7 +48,7 @@ LIKA_API_URL=http://localhost:8080 LIKA_SESSION_SECRET=<32+ random chars> npm ru
 npm run lint
 npm run typecheck
 npm test            # Vitest unit tests
-npm run test:e2e    # Playwright, against a running API and web server
+npm run test:e2e    # Playwright, against a running API (LIKA_SETUP_TOKEN=e2e-setup-token) and web server
 npm run build       # Standalone server in .next/standalone
 ```
 
@@ -59,18 +62,22 @@ npm run build       # Standalone server in .next/standalone
   - `security`: Authentication and authorization components
   - `db-memory`, `db-sqlite`, `db-mongo`: Pluggable database implementations
 - **Database Abstraction**: DAO pattern with multiple backend support (H2/SQLite/MongoDB)
-- **Core Models**: `Permalink`, `Domain`, `Account` with support for advanced features like activation scheduling and expiry dates
-- **Spring Security**: JWT-based authentication with role-based access control
+- **Core Models**: `Deeplink`, `Domain`, `User`, `ApiKey` with support for advanced features like activation scheduling and expiry dates
+- **Users and access**: users sign in through the identity provider chosen by `LIKA_AUTH_PROVIDER` (`local`, `keycloak`, `firebase`: `IdentityProvider` implementations in `api/.../core/services/auth`, one bean per value). Lika keeps users, invitations and rights in all cases; external accounts are linked by `externalId` or verified email, and only the `lika` claim is written to the provider; rights are the `lika` claim `{v, admin, domains: {domainId: viewer|editor|manager}}` of their token. API keys are for applications (viewer/editor per domain, or admin). Every check goes through `AuthorizationService`; `CredentialsService` resolves a bearer (JWT → user, else key secret). A token whose `v` differs from the user's version is refused (`token-stale`).
+- **MCP server**: `POST /mcp`, stateless Streamable HTTP implemented by hand (`core/services/mcp`: `McpServer` JSON-RPC, `McpTools` filtered per caller, `McpSkills` generated per caller as `lika://skills/*` resources). User API keys (`ApiKey.userId`, `lika_u_…`) act with their user's live rights, `/mcp` only (`role_mcp`). Integration doc: `docs/MCP.md`.
+- **Spring Security**: one filter authenticating user tokens and API keys (`security` module), coarse URL rules in `SecurityConfig`, per-domain rules in the services
 - **Caching**: Caffeine cache integration for performance optimization
 
 ### Frontend Architecture
 - **Next.js (App Router)**, React 19, TypeScript, Tailwind CSS v4, shadcn/ui (Radix), TanStack Query and Table, react-hook-form + zod
-- **Backend for the browser**: the browser never sees the API key. Sign-in stores it in an encrypted httpOnly cookie (`src/lib/session.ts`); `/bff/api/**` (`src/app/bff`) forwards calls to the API with it. `src/proxy.ts` redirects visitors without a session and slides the cookie expiry.
+- **Backend for the browser**: the browser never sees tokens. Sign-in stores the access and refresh tokens in an encrypted httpOnly cookie (`src/lib/session.ts`); `/bff/api/**` (`src/app/bff`) forwards calls to the API and renews the token (`src/lib/auth.ts`). Auth flows are server actions (`src/app/actions.ts`). `src/proxy.ts` redirects visitors without a session and slides the cookie expiry.
 - **Runtime configuration**: `LIKA_API_URL` and `LIKA_SESSION_SECRET` are read at startup (`src/lib/env.ts`, checked in `src/instrumentation.ts`)
 - **Key Routes**:
   - `/links`: link management, filtered by domain
-  - `/admin/domains`, `/admin/keys`, `/admin/archive`: admin only (`src/app/(app)/admin/layout.tsx`)
-  - `/signin`: sign-in with an API key
+  - `/users`, `/keys`: admins and domain managers (`src/app/(app)/(manage)/layout.tsx`)
+  - `/admin/domains`, `/admin/archive`: admin only (`src/app/(app)/admin/layout.tsx`)
+  - `/profile`: the signed-in user
+  - `/signin`, `/setup`, `/invite/[token]`, `/forgot-password`, `/reset-password/[token]`: public
 - `web/AGENTS.md`: this Next.js version differs from older ones; read `web/node_modules/next/dist/docs/` before changing framework code
 
 ### Database Selection
@@ -81,4 +88,4 @@ The API supports three database backends controlled by Gradle properties:
 ### Key Business Logic
 - **Permalink Types**: Simple links with optional advanced features (activation scheduling, landing pages, expiry)
 - **Multi-tenancy**: Domain-based separation with host-specific permalink management
-- **Security Model**: Account-based ownership with admin capabilities for domain/account management
+- **Security Model**: invite-only users with a role per domain, admins managing everything; the first admin is created with a setup token

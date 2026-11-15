@@ -1,7 +1,5 @@
 package li.lika.security.models
 
-import li.lika.security.models.security.Roles
-import li.lika.security.models.security.utils.Claims.GLOBAL_ROLE_ANONYMOUS
 import org.slf4j.LoggerFactory
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.GrantedAuthority
@@ -55,17 +53,13 @@ class DummyAuthentication private constructor(private val credentials: String?, 
         fun of(accessToken: String): DummyAuthentication {
             return DummyAuthentication(accessToken, true,null)
         }
-
-        fun admin(): DummyAuthentication {
-            return DummyAuthentication(null, true, listOf(Roles.globalRoleAdmin().toAuthority()))
-        }
     }
 
     init {
         authorities = LinkedList()
         if (authenticated) {
             if (dummyAuthorities == null) {
-                authorities.add(SimpleGrantedAuthority(Roles.parse(GLOBAL_ROLE_ANONYMOUS).toAuthority()))
+                authorities.add(SimpleGrantedAuthority(Authorities.ANONYMOUS))
             } else {
                 authorities.addAll(dummyAuthorities.map { SimpleGrantedAuthority(it) })
             }

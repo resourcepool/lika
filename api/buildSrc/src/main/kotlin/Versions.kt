@@ -1,12 +1,10 @@
 
 
 object Versions {
-    const val java = "21"
     const val springBoot = "3.3.4"
     const val kotlinStdLib = "1.9.25"
     const val kotlinReflect = kotlinStdLib
     const val kotlinLogging = "3.0.5"
-    const val kotlinCoroutines = "1.9.0"
     const val javaJwt = "4.4.0"
     const val jackson = "2.18.0"
     const val caffeine = "3.1.8" // FIXME upgrade soon to 3.X

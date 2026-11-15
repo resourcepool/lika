@@ -1,20 +1,8 @@
 package li.lika.common.models
 
 object ProtectedLinks {
-    val CONTACT = "contact"
-    val GTCS = "gtcs"
-    val CGV = "cgv"
-    val API = "api"
-    val STATIC = "static"
-    val PUBLIC = "public"
+    /** Paths served by the API itself on every domain: never usable as slugs */
+    private val RESERVED = setOf("api", "static", "public", "mcp", "actuator", "swagger-ui", "swagger-ui.html", "v3")
 
-    fun isProtected(slug: String): Boolean {
-        val slug = slug.trim().lowercase()
-        return slug == CONTACT || slug == CGV || slug == GTCS
-    }
-
-    fun isForbidden(slug: String): Boolean {
-        val slug = slug.trim().lowercase()
-        return slug == API || slug == STATIC || slug == PUBLIC
-    }
+    fun isForbidden(slug: String): Boolean = slug.trim().lowercase() in RESERVED
 }

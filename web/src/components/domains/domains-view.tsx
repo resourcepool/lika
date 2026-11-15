@@ -9,8 +9,7 @@ import { Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { api } from "@/lib/client"
 import type { Domain, Page, Link } from "@/lib/types"
-import { useAccounts, useDomains } from "@/hooks/use-lika"
-import { useSession } from "@/components/app/session-context"
+import { useDomains } from "@/hooks/use-lika"
 import { PageHeader } from "@/components/app/page-header"
 import { ConfirmDialog } from "@/components/app/confirm-dialog"
 import { EmptyState } from "@/components/app/empty-state"
@@ -21,24 +20,19 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
-const SELF = "self"
-
 export function DomainsView() {
   const domains = useDomains()
-  const accounts = useAccounts()
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<Domain>()
   const [deleting, setDeleting] = useState<Domain>()
-  const ownerName = (id: string | null) => (id ? (accounts.data?.find((a) => a.id === id)?.name ?? id.slice(0, 8)) : "system")
 
   return (
     <>
-      <PageHeader title="Domains" description="Hosts serving short links. Keys manage the domains they own or were granted.">
+      <PageHeader title="Domains" description="Hosts serving short links. Users and API keys get a role on each domain.">
         <Button onClick={() => setCreating(true)}>
           <Plus />
           New domain
@@ -49,7 +43,7 @@ export function DomainsView() {
           <Table>
             <TableHeader className="bg-muted/40">
               <TableRow className="hover:bg-transparent">
-                {["Host", "Type", "Owner", "Short URL base", "Landing", ""].map((h, i) => (
+                {["Host", "Type", "Short URL base", "Landing", ""].map((h, i) => (
                   <TableHead key={i} className="font-mono text-[11px] tracking-wider uppercase">
                     {h}
                   </TableHead>
@@ -72,7 +66,6 @@ export function DomainsView() {
                       {d.standard ? "standard" : "custom"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm">{ownerName(d.ownerId)}</TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">{d.apiBaseUrl}</TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">{d.landingBaseUrl ?? "—"}</TableCell>
                   <TableCell className="text-right">
@@ -122,17 +115,14 @@ const createSchema = z.object({
     .regex(/^[a-z0-9.-]+(:\d+)?$/, "A host name, optionally with a port, e.g. go.example.com"),
   apiBaseUrl: urlField,
   landingBaseUrl: z.union([z.literal(""), urlField]),
-  ownerId: z.string(),
   standard: z.boolean(),
 })
 
 function CreateDomainDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const queryClient = useQueryClient()
-  const session = useSession()
-  const accounts = useAccounts(open)
   const form = useForm<z.infer<typeof createSchema>>({
     resolver: zodResolver(createSchema),
-    defaultValues: { host: "", apiBaseUrl: "", landingBaseUrl: "", ownerId: SELF, standard: false },
+    defaultValues: { host: "", apiBaseUrl: "", landingBaseUrl: "", standard: false },
   })
   useEffect(() => {
     if (open) form.reset()
@@ -143,7 +133,7 @@ function CreateDomainDialog({ open, onOpenChange }: { open: boolean; onOpenChang
       api<Domain>("/api/admin/domains", {
         method: "POST",
         body: { host: v.host, apiBaseUrl: v.apiBaseUrl.replace(/\/+$/, ""), landingBaseUrl: v.landingBaseUrl },
-        query: { ownerId: v.ownerId === SELF ? undefined : v.ownerId, global: v.standard || undefined },
+        query: { global: v.standard || undefined },
       }),
     onSuccess: (d) => {
       queryClient.invalidateQueries({ queryKey: ["domains"] })
@@ -154,7 +144,7 @@ function CreateDomainDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   })
 
   const { errors } = form.formState
-  const [host, apiBaseUrl, ownerId, standard] = useWatch({ control: form.control, name: ["host", "apiBaseUrl", "ownerId", "standard"] })
+  const [host, apiBaseUrl, standard] = useWatch({ control: form.control, name: ["host", "apiBaseUrl", "standard"] })
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -179,27 +169,10 @@ function CreateDomainDialog({ open, onOpenChange }: { open: boolean; onOpenChang
           <FormField label="Landing base URL" htmlFor="landingBaseUrl" error={errors.landingBaseUrl?.message} hint="Optional. Home page of the domain, and target of landing links.">
             <Input id="landingBaseUrl" placeholder="https://example.com" className="font-mono text-sm" {...form.register("landingBaseUrl")} />
           </FormField>
-          <FormField label="Owner">
-            <Select value={ownerId} onValueChange={(v) => form.setValue("ownerId", v)}>
-              <SelectTrigger className="w-full" aria-label="Owner">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={SELF}>Me{session.accountName ? ` (${session.accountName})` : ""}</SelectItem>
-                {accounts.data
-                  ?.filter((a) => a.id !== session.accountId)
-                  .map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      {a.name}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </FormField>
           <label className="flex items-center justify-between gap-4 rounded-md border p-3">
             <span>
               <span className="block text-sm font-medium">Standard domain</span>
-              <span className="block text-xs text-muted-foreground">Shown as system-wide. Other keys still need a grant.</span>
+              <span className="block text-xs text-muted-foreground">Shown as system-wide. Users and keys still need a role on it.</span>
             </span>
             <Switch checked={standard} onCheckedChange={(v) => form.setValue("standard", v)} />
           </label>

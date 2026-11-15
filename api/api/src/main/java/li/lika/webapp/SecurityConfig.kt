@@ -2,21 +2,17 @@ package li.lika.webapp
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import jakarta.annotation.PostConstruct
-import li.lika.common.security.AccountRegistry
+import li.lika.common.security.CredentialsResolver
 import li.lika.core.props.CorsProperties
 import li.lika.core.props.ServerProperties
 import li.lika.security.*
-import li.lika.security.models.security.Roles
-import li.lika.security.props.SecurityProperties
+import li.lika.security.models.Authorities
 import mu.KotlinLogging
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
-import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
-import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.AuthenticationFilter
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter
@@ -29,9 +25,7 @@ import org.springframework.web.filter.CorsFilter
 class SecurityConfig(
     private val serverProperties: ServerProperties,
     private val corsProperties: CorsProperties,
-    private val securityProperties: SecurityProperties,
-    private val mapper: ObjectMapper,
-    private val registry: AccountRegistry
+    private val mapper: ObjectMapper
 ) {
 
     private val logger = KotlinLogging.logger {}
@@ -41,26 +35,17 @@ class SecurityConfig(
         logger.info("========================== Env Info ==========================")
         logger.info("Server properties: " + serverProperties.port)
         logger.info("Cors properties: " + corsProperties.allowedOrigins)
-        logger.info("Security properties: defaultAccessToken: ${securityProperties.defaultGlobalAccessToken}")
         logger.info("=================================================================\n")
     }
 
-    private fun authenticationManager(): AuthenticationManager {
-        return AuthManager(registry, securityProperties)
-    }
-
     /**
-     * Hashes link passwords.
+     * Every request goes through the authentication filter: a user token or an API key makes it authenticated,
+     * no credentials leave it anonymous. Finer rights (role per domain) are checked by the services.
      */
     @Bean
-    fun passwordEncoder(): PasswordEncoder {
-        return BCryptPasswordEncoder()
-    }
-
-    @Bean
-    fun filterChain(http: HttpSecurity): SecurityFilterChain {
+    fun filterChain(http: HttpSecurity, resolver: CredentialsResolver): SecurityFilterChain {
         val securityFailuresHandler = AppSecurityFailuresHandler(mapper)
-        val authFilter = AuthenticationFilter(authenticationManager(), AppAuthenticationConverter())
+        val authFilter = AuthenticationFilter(AuthManager(resolver), AppAuthenticationConverter())
         authFilter.requestMatcher = AppRequestMatcher()
         authFilter.successHandler = AppAuthenticationSuccessHandler()
         authFilter.failureHandler = securityFailuresHandler
@@ -74,6 +59,9 @@ class SecurityConfig(
             .formLogin {
                 it.disable()
             }
+            .exceptionHandling {
+                it.accessDeniedHandler(securityFailuresHandler)
+            }
         if (corsProperties.enabled == true) {
             filterConfig
                 .addFilter(corsFilter())
@@ -83,29 +71,14 @@ class SecurityConfig(
             .authorizeHttpRequests { customizer ->
                 customizer
                     .requestMatchers("/actuator/**").permitAll()
-                    .requestMatchers("/api/search/**")
-                    .hasAnyAuthority(
-                        *(Roles.distinct(
-                            Roles.globalRoleAdmin().toAuthority(),
-                            Roles.globalRoleRead().toAuthority(),
-                            Roles.orgRoleReadAnyOrgAnyDomain().toAuthority(),
-                            Roles.orgRoleReadWriteAnyOrgAnyDomain().toAuthority()
-                        ))
-                    )
-                    .requestMatchers("/api/links/**")
-                    .hasAnyAuthority(
-                        *(Roles.distinct(
-                            Roles.globalRoleAdmin().toAuthority(),
-                        Roles.orgRoleReadWriteAnyOrgAnyDomain().toAuthority()
-                        ))
-                    )
-                    .requestMatchers("/api/domains/**")
-                    .hasAnyAuthority(
-                        *(Roles.distinct(Roles.globalRoleAdmin().toAuthority(),
-                        Roles.orgRoleReadWriteAnyOrgAnyDomain().toAuthority()))
-                    )
-                    .requestMatchers("/api/admin/**")
-                    .hasAuthority(Roles.globalRoleAdmin().toAuthority())
+                    .requestMatchers("/api/auth/**").permitAll()
+                    // Answers 401 itself, as MCP clients expect
+                    .requestMatchers("/mcp", "/mcp/**").permitAll()
+                    .requestMatchers("/api/admin/**").hasAuthority(Authorities.ADMIN)
+                    .requestMatchers("/api/me/**", "/api/me").hasAuthority(Authorities.USER)
+                    // Applications do not manage users or keys, unless they hold an admin key
+                    .requestMatchers("/api/users/**", "/api/users", "/api/keys/**", "/api/keys").hasAnyAuthority(Authorities.USER, Authorities.ADMIN)
+                    .requestMatchers("/api/**").hasAuthority(Authorities.AUTHENTICATED)
                     .requestMatchers("/**").permitAll()
             }
         return http.build()

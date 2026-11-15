@@ -1,0 +1,14 @@
+# Keycloak for developing and testing Lika with LIKA_AUTH_PROVIDER=keycloak:
+#   docker compose -f dev/docker-compose.yml up keycloak     # http://localhost:8180 (admin / admin)
+# See README.md in this directory.
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    command: ["start-dev", "--import-realm", "--http-port=8180"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports: ["8180:8180"]
+    volumes:
+      - ./keycloak/lika-realm.json:/opt/keycloak/data/import/lika-realm.json:ro
+

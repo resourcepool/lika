@@ -3,7 +3,7 @@
 import { format } from "date-fns"
 import { ExternalLink, Pencil } from "lucide-react"
 import type { Link } from "@/lib/types"
-import { useAccounts } from "@/hooks/use-lika"
+import { useApiKeys, useUsers } from "@/hooks/use-lika"
 import { useSession } from "@/components/app/session-context"
 import { CopyButton } from "@/components/app/copy-button"
 import { LinkStatusBadges } from "@/components/links/link-status-badge"
@@ -13,8 +13,15 @@ import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetT
 
 export function LinkDetailsSheet({ link, onOpenChange, onEdit }: { link?: Link; onOpenChange: (open: boolean) => void; onEdit: (link: Link) => void }) {
   const session = useSession()
-  const accounts = useAccounts(session.admin && !!link)
-  const creator = link && (link.createdBy === session.accountId ? "You" : (accounts.data?.find((a) => a.id === link.createdBy)?.name ?? link.createdBy))
+  const users = useUsers(session.canManage && !!link)
+  const keys = useApiKeys(session.canManage && !!link)
+  const creator =
+    link &&
+    (link.createdBy === session.user.id
+      ? "You"
+      : link.createdBy === "system"
+        ? "Configuration"
+        : (users.data?.find((u) => u.id === link.createdBy)?.name ?? keys.data?.find((k) => k.id === link.createdBy)?.name ?? "Someone else"))
   const activation = link?.options.activation
 
   return (

@@ -10,7 +10,7 @@ import li.lika.common.persistence.DeeplinkDao
 import li.lika.common.utils.StringUtils
 import li.lika.core.props.LikaProperties
 import li.lika.core.services.handlers.TransactionHandler
-import li.lika.security.models.AccessTokenAuthentication
+import li.lika.common.security.LikaPrincipal
 import org.springframework.cache.annotation.CacheEvict
 import org.springframework.cache.annotation.Cacheable
 import org.springframework.scheduling.annotation.Scheduled
@@ -25,7 +25,7 @@ import java.util.*
 class DeeplinkService(
     private val domainDao: DomainDao,
     private val deeplinkDao: DeeplinkDao,
-    private val domainAccess: DomainAccessService,
+    private val authorization: AuthorizationService,
     private val passwordEncoder: PasswordEncoder,
     private val props: LikaProperties,
     private val transactionHandler: TransactionHandler
@@ -35,6 +35,8 @@ class DeeplinkService(
     companion object {
         // All days at 1 am
         const val CRON_SCHEDULER = "0 0 1 * * *"
+        /** Creator of the links of the configuration */
+        const val SYSTEM_CREATOR = "system"
         private val BCRYPT_HASH = Regex("^\\$2[aby]?\\$\\d{2}\\$.{53}$")
     }
 
@@ -44,7 +46,7 @@ class DeeplinkService(
     }
 
     @CacheEvict("deeplinks", allEntries = true)
-    fun init(adminId: String) {
+    fun init() {
         cleanExpiredDaily()
         hashPlaintextPasswords()
         props.defaultLinks?.forEach { l ->
@@ -54,7 +56,7 @@ class DeeplinkService(
             }
             transactionHandler.runInTransaction {
                 val password = l.password?.let { PasswordProtectedOptionsDto(it) }
-                save(DeeplinkCreator(slug = l.slug, type = DeeplinkType.read(l.type), targetUrl = l.targetUrl, domainId = domain.id!!, options = OptionsDto(password = password)), domain, adminId, null)
+                save(DeeplinkCreator(slug = l.slug, type = DeeplinkType.read(l.type), targetUrl = l.targetUrl, domainId = domain.id!!, options = OptionsDto(password = password)), domain, SYSTEM_CREATOR, null)
             }
         }
     }
@@ -74,18 +76,18 @@ class DeeplinkService(
 
     @Transactional
     @CacheEvict("deeplinks", allEntries = true)
-    fun save(l: DeeplinkCreator, caller: AccessTokenAuthentication): Deeplink {
-        val domain = domainAccess.assertCanWrite(caller, l.domainId)
+    fun save(l: DeeplinkCreator, caller: LikaPrincipal): Deeplink {
+        val domain = authorization.assertCan(caller, l.domainId, DomainRole.EDITOR)
         val existing = if (l.id.isNullOrBlank()) null else deeplinkDao.findOne(l.id!!) ?: throw PermalinkNotFoundException()
         if (existing != null) {
             // Moving or editing a link also requires managing its current domain
             try {
-                domainAccess.assertCanWriteHost(caller, existing.host)
+                authorization.assertCanHost(caller, existing.host, DomainRole.EDITOR)
             } catch (e: InvalidDomainException) {
                 throw PermalinkNotFoundException()
             }
         }
-        return save(l, domain, caller.getId(), existing)
+        return save(l, domain, caller.id, existing)
     }
 
     private fun save(l: DeeplinkCreator, domain: Domain, callerId: String, existing: Deeplink?): Deeplink {
@@ -152,16 +154,16 @@ class DeeplinkService(
     }
 
     @Transactional
-    fun findOneByDomainAndSlug(caller: AccessTokenAuthentication, domainId: String, slug: String): Deeplink {
-        val domain = domainAccess.assertCanRead(caller, domainId)
+    fun findOneByDomainAndSlug(caller: LikaPrincipal, domainId: String, slug: String): Deeplink {
+        val domain = authorization.assertCan(caller, domainId, DomainRole.VIEWER)
         return deeplinkDao.findByHostAndSlug(domain.host, slug) ?: throw PermalinkNotFoundException()
     }
 
     @Transactional
-    fun findOne(caller: AccessTokenAuthentication, id: String): Deeplink {
+    fun findOne(caller: LikaPrincipal, id: String): Deeplink {
         val link = deeplinkDao.findOne(id) ?: throw PermalinkNotFoundException()
         try {
-            domainAccess.assertCanReadHost(caller, link.host)
+            authorization.assertCanHost(caller, link.host, DomainRole.VIEWER)
         } catch (e: InvalidDomainException) {
             throw PermalinkNotFoundException()
         }
@@ -169,8 +171,8 @@ class DeeplinkService(
     }
 
     @Transactional
-    fun getAll(caller: AccessTokenAuthentication, domainId: String): List<Deeplink> {
-        val domain = domainAccess.assertCanRead(caller, domainId)
+    fun getAll(caller: LikaPrincipal, domainId: String): List<Deeplink> {
+        val domain = authorization.assertCan(caller, domainId, DomainRole.VIEWER)
         return deeplinkDao.findAllForHost(domain.host)
     }
 
@@ -178,21 +180,21 @@ class DeeplinkService(
      * Without [domainId], lists the links of every domain the caller can access.
      */
     @Transactional
-    fun getPage(caller: AccessTokenAuthentication, domainId: String?, req: PageRequest): PageResponse<Deeplink> {
+    fun getPage(caller: LikaPrincipal, domainId: String?, req: PageRequest): PageResponse<Deeplink> {
         val hosts = if (domainId.isNullOrBlank()) {
-            domainAccess.accessibleDomains(caller).map { it.host }
+            authorization.accessibleDomains(caller).map { it.host }
         } else {
-            listOf(domainAccess.assertCanRead(caller, domainId).host)
+            listOf(authorization.assertCan(caller, domainId, DomainRole.VIEWER).host)
         }
         return deeplinkDao.findPageForHosts(hosts, req)
     }
 
     @Transactional
     @CacheEvict("deeplinks", allEntries = true)
-    fun deleteOne(caller: AccessTokenAuthentication, id: String) {
+    fun deleteOne(caller: LikaPrincipal, id: String) {
         val link = deeplinkDao.findOne(id) ?: throw PermalinkNotFoundException()
         try {
-            domainAccess.assertCanWriteHost(caller, link.host)
+            authorization.assertCanHost(caller, link.host, DomainRole.EDITOR)
         } catch (e: InvalidDomainException) {
             throw PermalinkNotFoundException()
         }
@@ -201,21 +203,21 @@ class DeeplinkService(
 
     @Transactional
     @CacheEvict("deeplinks", allEntries = true)
-    fun deleteBySlug(caller: AccessTokenAuthentication, domainId: String, slug: String) {
-        val domain = domainAccess.assertCanWrite(caller, domainId)
+    fun deleteBySlug(caller: LikaPrincipal, domainId: String, slug: String) {
+        val domain = authorization.assertCan(caller, domainId, DomainRole.EDITOR)
         deeplinkDao.findByHostAndSlug(domain.host, slug) ?: throw PermalinkNotFoundException()
         deeplinkDao.deleteBySlug(domain.host, slug)
     }
 
     @Transactional
-    fun assertSlugAvailable(caller: AccessTokenAuthentication, domainId: String, slug: String) {
-        val domain = domainAccess.assertCanRead(caller, domainId)
+    fun assertSlugAvailable(caller: LikaPrincipal, domainId: String, slug: String) {
+        val domain = authorization.assertCan(caller, domainId, DomainRole.VIEWER)
         assertSlugAvailable(domain.host, slug)
     }
 
     @Transactional
-    fun suggestSlugs(caller: AccessTokenAuthentication, domainId: String, searchStr: String): List<String> {
-        val domain = domainAccess.assertCanRead(caller, domainId)
+    fun suggestSlugs(caller: LikaPrincipal, domainId: String, searchStr: String): List<String> {
+        val domain = authorization.assertCan(caller, domainId, DomainRole.VIEWER)
         val normalizedString = StringUtils.normalizeAlphaNumeric(searchStr)
         deeplinkDao.findByHostAndSlug(domain.host, normalizedString) ?: return listOf(normalizedString)
         val alternatives = HashSet<String>()

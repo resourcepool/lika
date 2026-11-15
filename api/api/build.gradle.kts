@@ -68,6 +68,8 @@ dependencies {
     implementation("io.github.microutils:kotlin-logging-jvm:${Versions.kotlinLogging}")
     implementation("com.github.ben-manes.caffeine:caffeine:${Versions.caffeine}")
     implementation("com.auth0:java-jwt:${Versions.javaJwt}")
+    // Verifies the tokens of Keycloak and Firebase against their published keys
+    implementation("org.springframework.security:spring-security-oauth2-jose")
     implementation("io.netty:netty-all")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:${Versions.springdoc}")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
@@ -75,5 +77,8 @@ dependencies {
     testImplementation("org.springframework.security:spring-security-test")
     // Tests run against the in-memory database
     testImplementation("org.springframework:spring-jdbc")
+    // Keycloak tests, skipped without Docker
+    testImplementation("org.testcontainers:testcontainers")
+    testImplementation("org.testcontainers:junit-jupiter")
 
 }

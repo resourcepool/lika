@@ -56,6 +56,8 @@ test-web:
   variables:
     LIKA_API_URL: http://localhost:8080
     LIKA_SESSION_SECRET: ci-only-session-secret-not-used-anywhere-else
+    # Read by the API: lets the tests create the first admin
+    LIKA_SETUP_TOKEN: e2e-setup-token
   cache:
     key:
       files:

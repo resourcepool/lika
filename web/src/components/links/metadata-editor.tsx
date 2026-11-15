@@ -27,10 +27,3 @@ export function MetadataEditor({ rows, onChange }: { rows: MetadataRow[]; onChan
   )
 }
 
-export function toMetadata(rows: MetadataRow[]): Record<string, string> {
-  return Object.fromEntries(rows.filter((r) => r.key.trim()).map((r) => [r.key.trim(), r.value]))
-}
-
-export function toRows(metadata: Record<string, string> | undefined): MetadataRow[] {
-  return Object.entries(metadata ?? {}).map(([key, value]) => ({ key, value }))
-}

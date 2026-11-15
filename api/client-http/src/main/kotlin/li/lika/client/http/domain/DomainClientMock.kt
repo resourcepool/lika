@@ -1,8 +1,7 @@
 package li.lika.client.http.domain
 
-import li.lika.common.models.Account
-import li.lika.common.models.AccountCreator
 import li.lika.common.models.Domain
+import li.lika.common.models.DomainCreator
 import mu.KotlinLogging
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -21,7 +20,7 @@ class DomainClientMock: DomainClient {
         return Mono.empty()
     }
 
-    override fun create(req: AccountCreator): Mono<Account> {
+    override fun create(req: DomainCreator): Mono<Domain> {
         logger.info("[mock-lika-domain-account] no-Op create()")
         return Mono.empty()
     }

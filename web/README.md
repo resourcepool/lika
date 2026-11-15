@@ -1,35 +1,27 @@
 # Lika web
 
-Admin interface of Lika: manage short links, domains, API keys and archives.
+Admin interface of Lika: manage short links, users, API keys, domains and archives.
 
-The browser talks to this server only. The server keeps the signed-in API key in an encrypted, httpOnly cookie and calls the [Lika API](../api) on the browser's behalf, through `/bff/api/**`.
+The browser talks to this server only. The server keeps the tokens of the signed-in user in an encrypted, httpOnly cookie and calls the [Lika API](../api) on the browser's behalf, through `/bff/api/**`. It renews the access token when it expires, or when the API refuses it because the user's rights changed (`token-stale`).
 
 ## Configuration
 
-Read when the server starts:
+`LIKA_API_URL` and `LIKA_SESSION_SECRET` are required; the server refuses to start without them. See [docs/CONFIGURATION.md](../docs/CONFIGURATION.md#web-interface).
 
-| Variable | Required | Description |
-|---|---|---|
-| `LIKA_API_URL` | yes | URL of the Lika API, as reachable from this server, e.g. `http://lika-api:8080` |
-| `LIKA_SESSION_SECRET` | yes | Random string of at least 32 characters encrypting the session cookie, e.g. `openssl rand -base64 48`. Changing it signs everyone out. |
-| `PORT` | no | Listening port: 80 in the Docker image, 3000 otherwise |
-
-The server refuses to start without them. Sessions last as long as the browser keeps visiting at least once every 400 days, until sign-out or until the key is regenerated or deleted.
-
-Behind a TLS-terminating reverse proxy, forward `X-Forwarded-Proto` so the cookie is marked `Secure`.
+Sessions last as long as the browser keeps visiting at least once every 400 days and the API renews them, until sign-out, a password change, or the user being disabled. Single sign-on (Keycloak, Google) goes through `/auth/sso` and `/auth/callback`.
 
 ## Development
 
 ```bash
-# In ../api: start the API with the in-memory database
-./gradlew :api:bootRun
+# In ../api: start the API with the in-memory database, and a known setup token
+LIKA_SETUP_TOKEN=e2e-setup-token ./gradlew :api:bootRun
 
 # Here
 npm install
 LIKA_API_URL=http://localhost:8080 LIKA_SESSION_SECRET=dev-secret-dev-secret-dev-secret-0123 npm run dev
 ```
 
-Sign in at http://localhost:3000 with the root key of the API configuration (`lika-client-secret` by default).
+Open http://localhost:3000: the setup page creates the first admin with the setup token (also printed in the API logs). Invite other users from **Users**. Invitation links are shown in the UI; set the Mailjet variables of the API to email them.
 
 ## Tests
 
@@ -38,13 +30,14 @@ npm run lint && npm run typecheck
 npm test              # unit tests (Vitest)
 
 # End-to-end (Playwright), against the API above with its default configuration
+# and LIKA_SETUP_TOKEN=e2e-setup-token: the tests create the first admin if needed
 npm run build && cp -r .next/static .next/standalone/.next/
 LIKA_API_URL=http://localhost:8080 LIKA_SESSION_SECRET=... PORT=3000 node .next/standalone/server.js &
 npx playwright install chromium   # or E2E_BROWSER_CHANNEL=chrome to use the installed Chrome
 npm run test:e2e
 ```
 
-`E2E_BASE_URL`, `E2E_API_URL` and `E2E_ADMIN_TOKEN` point the tests elsewhere.
+The `E2E_*` variables point the tests elsewhere, e.g. at an API using Keycloak (`E2E_PROVIDER=keycloak`): see [docs/CONFIGURATION.md](../docs/CONFIGURATION.md#end-to-end-tests) and [dev/README.md](../dev/README.md).
 
 ## Docker
 

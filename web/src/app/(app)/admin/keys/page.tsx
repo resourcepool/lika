@@ -1,8 +1,6 @@
-import type { Metadata } from "next"
-import { KeysView } from "@/components/keys/keys-view"
+import { redirect } from "next/navigation"
 
-export const metadata: Metadata = { title: "API Keys" }
-
-export default function KeysPage() {
-  return <KeysView />
+/** API keys moved out of the admin section in 0.7.0, managers using them too */
+export default function LegacyKeysPage() {
+  redirect("/keys")
 }

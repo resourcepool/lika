@@ -17,12 +17,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 type Conflict = "skip" | "overwrite"
-type Archive = { accounts?: unknown[]; domains?: unknown[]; version?: number }
+type Archive = { accounts?: unknown[]; users?: unknown[]; apiKeys?: unknown[]; domains?: unknown[]; version?: number }
 
 export function ArchiveView() {
   return (
     <>
-      <PageHeader title="Import / Export" description="Move accounts, domains and links between Lika instances, or back them up." />
+      <PageHeader title="Import / Export" description="Move users, API keys, domains and links between Lika instances, or back them up." />
       <div className="grid gap-4 p-4 md:p-6 xl:grid-cols-2">
         <ExportCard />
         <ImportCard />
@@ -104,7 +104,7 @@ function ImportCard() {
     if (!f) return
     try {
       const archive = JSON.parse(await f.text()) as Archive
-      if (!archive || !Array.isArray(archive.accounts)) {
+      if (!archive || (!Array.isArray(archive.accounts) && !Array.isArray(archive.domains))) {
         throw new Error("not a Lika archive")
       }
       setFile({ name: f.name, archive })
@@ -126,7 +126,7 @@ function ImportCard() {
           <Upload className="size-4 text-brand" /> Import
         </CardTitle>
         <CardDescription>
-          Accounts are matched by name, domains by host, links by host and slug. Reads archives from Lika 0.4 and later. A preview runs first: nothing is written until you
+          Users are matched by email, API keys by name, domains by host, links by host and slug. Accounts of archives before 0.7 become API keys. Reads archives from Lika 0.4 and later. A preview runs first: nothing is written until you
           confirm.
         </CardDescription>
       </CardHeader>
@@ -141,7 +141,7 @@ function ImportCard() {
           <span className="min-w-0">
             <span className="block truncate text-sm font-medium">{file?.name ?? "Choose an archive"}</span>
             <span className="block font-mono text-xs text-muted-foreground">
-              {file ? `v${file.archive.version ?? 1} · ${file.archive.accounts?.length ?? 0} accounts` : ".json exported from Lika"}
+              {file ? archiveSummary(file.archive) : ".json exported from Lika"}
             </span>
           </span>
         </button>
@@ -199,7 +199,8 @@ function ConflictOption({ value, title, description }: { value: Conflict; title:
 
 function ReportTable({ report }: { report: ImportReport }) {
   const rows = [
-    ["Accounts", report.accounts],
+    ["Users", report.users],
+    ["API keys", report.apiKeys],
     ["Domains", report.domains],
     ["Links", report.links],
   ] as const
@@ -231,4 +232,11 @@ function ReportTable({ report }: { report: ImportReport }) {
       </div>
     </div>
   )
+}
+
+function archiveSummary(archive: Archive): string {
+  const version = archive.version ?? 1
+  const domains = `${archive.domains?.length ?? 0} domains`
+  if (version < 3) return `v${version} · ${archive.accounts?.length ?? 0} accounts · ${domains}`
+  return `v${version} · ${archive.users?.length ?? 0} users · ${archive.apiKeys?.length ?? 0} keys · ${domains}`
 }

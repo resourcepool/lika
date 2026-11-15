@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ArrowLeftRight, Globe, KeyRound, Link2, LogOut } from "lucide-react"
+import { ArrowLeftRight, Globe, KeyRound, Link2, LogOut, Users } from "lucide-react"
 import { signOut } from "@/app/actions"
 import { Logo } from "@/components/app/logo"
 import { ThemeToggle } from "@/components/app/theme-toggle"
@@ -22,9 +22,13 @@ import {
 
 const workspace = [{ href: "/links", label: "Links", icon: Link2 }]
 
+const manage = [
+  { href: "/users", label: "Users", icon: Users },
+  { href: "/keys", label: "API Keys", icon: KeyRound },
+]
+
 const admin = [
   { href: "/admin/domains", label: "Domains", icon: Globe },
-  { href: "/admin/keys", label: "API Keys", icon: KeyRound },
   { href: "/admin/archive", label: "Import / Export", icon: ArrowLeftRight },
 ]
 
@@ -63,14 +67,15 @@ export function AppSidebar({ version }: { version?: string }) {
       </SidebarHeader>
       <SidebarContent>
         <NavGroup label="Workspace" items={workspace} />
+        {session.canManage && <NavGroup label="Manage" items={manage} />}
         {session.admin && <NavGroup label="Admin" items={admin} />}
       </SidebarContent>
       <SidebarFooter>
         <div className="flex items-center justify-between gap-2 px-2 group-data-[collapsible=icon]:flex-col">
-          <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <p className="truncate text-sm font-medium">{session.accountName ?? "API key"}</p>
-            <p className="font-mono text-[11px] text-muted-foreground">{session.admin ? "admin" : "scoped key"}</p>
-          </div>
+          <Link href="/profile" className="min-w-0 rounded-md px-1 py-0.5 hover:bg-sidebar-accent group-data-[collapsible=icon]:hidden" title="Your profile">
+            <p className="truncate text-sm font-medium">{session.user.name}</p>
+            <p className="truncate font-mono text-[11px] text-muted-foreground">{session.admin ? "admin" : session.user.email}</p>
+          </Link>
           <div className="flex items-center gap-1 group-data-[collapsible=icon]:flex-col">
             <ThemeToggle />
             <form action={signOut}>

@@ -41,12 +41,6 @@ object StringUtils {
                 .joinToString("")
     }
 
-    fun getRandomAlphaNumString(length: Int): String {
-        val charset = "abcdefghiklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-        return (1..length)
-            .map { charset.random() }
-            .joinToString("")
-    }
 
     fun generateSlugs(qty: Int = 10): List<String> {
         val results = ArrayList<String>(qty)

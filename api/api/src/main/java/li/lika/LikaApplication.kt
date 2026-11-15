@@ -5,7 +5,10 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
 import com.github.benmanes.caffeine.cache.Caffeine
+import li.lika.core.props.AuthProperties
 import li.lika.core.props.CorsProperties
+import li.lika.core.props.MailjetProperties
+import li.lika.core.props.McpProperties
 import li.lika.core.props.LikaProperties
 import li.lika.core.props.ServerProperties
 import li.lika.security.props.SecurityProperties
@@ -26,6 +29,8 @@ import org.springframework.context.annotation.ComponentScan
 import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.PropertySource
 import org.springframework.scheduling.annotation.EnableScheduling
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
+import org.springframework.security.crypto.password.PasswordEncoder
 import java.lang.management.GarbageCollectorMXBean
 import java.lang.management.ManagementFactory
 import java.text.NumberFormat
@@ -43,7 +48,10 @@ import java.util.concurrent.TimeUnit
     ServerProperties::class,
     CorsProperties::class,
     LikaProperties::class,
-    SecurityProperties::class
+    SecurityProperties::class,
+    AuthProperties::class,
+    MailjetProperties::class,
+    McpProperties::class
 )
 @Import(
     value = [WebConfig::class, SecurityConfig::class, OpenApiConfig::class]
@@ -60,6 +68,14 @@ class LikaApplication {
     @Bean
     fun caffeineConfig(): Caffeine<Any, Any> {
         return Caffeine.newBuilder().expireAfterAccess(1, TimeUnit.MINUTES)
+    }
+
+    /**
+     * Hashes user and link passwords.
+     */
+    @Bean
+    fun passwordEncoder(): PasswordEncoder {
+        return BCryptPasswordEncoder()
     }
 
     @Bean

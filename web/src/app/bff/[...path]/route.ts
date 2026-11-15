@@ -1,34 +1,57 @@
 import { type NextRequest } from "next/server"
 import { cookies } from "next/headers"
-import { getSession } from "@/lib/session"
+import { needsRenewal, renewSession } from "@/lib/auth"
+import { getSession, saveSession, type Session } from "@/lib/session"
 import { likaFetch } from "@/lib/lika-api"
-import { SESSION_COOKIE } from "@/lib/session-cookie"
+import { SESSION_COOKIE, isSecureRequest } from "@/lib/session-cookie"
 
 /**
- * Backend for the browser: forwards /bff/api/** and /bff/public/** to the Lika API
- * with the signed-in key, which never reaches browser JavaScript.
+ * Backend for the browser: forwards /bff/api/** and /bff/public/** to the Lika API with the
+ * access token of the signed-in user, which never reaches browser JavaScript.
+ *
+ * The access token is renewed when it expires, and when the API refuses it because the rights
+ * of the user changed (token-stale). The renewed session is saved in the cookie.
  */
 async function forward(request: NextRequest, { params }: RouteContext<"/bff/[...path]">) {
   const { path } = await params
   if (path[0] !== "api" && path[0] !== "public") {
     return Response.json({ message: "Not found" }, { status: 404 })
   }
-  const session = await getSession()
+  let session = await getSession()
   if (!session) {
-    return Response.json({ message: "Not signed in" }, { status: 401 })
+    return Response.json({ message: "Not signed in", errorCode: "not-signed-in" }, { status: 401 })
   }
 
   const target = "/" + path.map(encodeURIComponent).join("/") + request.nextUrl.search
   const hasBody = request.method !== "GET" && request.method !== "HEAD"
-  const response = await likaFetch(target, session.token, {
-    method: request.method,
-    headers: hasBody ? { "Content-Type": request.headers.get("content-type") ?? "application/json" } : undefined,
-    body: hasBody ? await request.text() : undefined,
-  })
+  const body = hasBody ? await request.text() : undefined
+  const send = (s: Session) =>
+    likaFetch(target, s.accessToken, {
+      method: request.method,
+      headers: hasBody ? { "Content-Type": request.headers.get("content-type") ?? "application/json" } : undefined,
+      body,
+    })
 
-  if (response.status === 401) {
-    // The key was regenerated or deleted: the session is over
-    ;(await cookies()).delete(SESSION_COOKIE)
+  let renewed = false
+  if (needsRenewal(session)) {
+    session = await renewSession(session)
+    renewed = true
+  }
+  let response = session ? await send(session) : undefined
+  if (session && response?.status === 401 && !renewed) {
+    // Rights changed, or the API restarted with another signing secret
+    session = await renewSession(session)
+    renewed = true
+    response = session ? await send(session) : undefined
+  }
+
+  const store = await cookies()
+  if (!session || !response) {
+    store.delete(SESSION_COOKIE)
+    return Response.json({ message: "Your session has ended. Sign in again.", errorCode: "session-ended" }, { status: 401 })
+  }
+  if (renewed) {
+    await saveSession(session, isSecureRequest(request.headers, request.nextUrl.protocol))
   }
   return new Response(response.body, {
     status: response.status,

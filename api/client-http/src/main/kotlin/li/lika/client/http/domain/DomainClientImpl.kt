@@ -1,12 +1,10 @@
 package li.lika.client.http.domain
 
-import li.lika.client.http.account.AccountClientImpl
 import li.lika.client.http.exceptions.FrogLinkClientErrorHandler
 import li.lika.client.http.security.Authenticator
 import li.lika.client.http.security.DummyAuthenticator
-import li.lika.common.models.Account
-import li.lika.common.models.AccountCreator
 import li.lika.common.models.Domain
+import li.lika.common.models.DomainCreator
 import org.slf4j.LoggerFactory
 import org.springframework.web.reactive.function.client.*
 import reactor.core.publisher.Flux
@@ -18,7 +16,7 @@ class DomainClientImpl(
     val errorHandler: FrogLinkClientErrorHandler
 ) : DomainClient {
 
-    private val logger = LoggerFactory.getLogger(AccountClientImpl::class.java)
+    private val logger = LoggerFactory.getLogger(DomainClientImpl::class.java)
     private val authenticator: Authenticator
     private val webClient: WebClient
 
@@ -58,13 +56,14 @@ class DomainClientImpl(
         )
     }
 
-    override fun create(req: AccountCreator): Mono<Account> {
+    override fun create(req: DomainCreator): Mono<Domain> {
         return authenticator.wrap(
             webClient.post()
                 .uri("/api/admin/domains")
                 .bodyValue(req)
                 .retrieve()
-                .bodyToMono()
+                .bodyToMono<Domain>()
+                .onErrorMap(WebClientResponseException::class.java, errorHandler::parseWebClientResponseException)
         )
     }
 

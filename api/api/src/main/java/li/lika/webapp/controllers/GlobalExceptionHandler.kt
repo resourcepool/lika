@@ -31,22 +31,6 @@ class GlobalExceptionHandler {
             .body(ex.res())
     }
 
-    @ExceptionHandler(AccountNotFoundException::class)
-    fun handleAccountNotFoundException(ex: AccountNotFoundException, request: HttpServletRequest): ResponseEntity<MessageAndErrorCodeResponse> {
-        logger.warn("Account not found: ${ex.message}")
-        return ResponseEntity
-            .status(HttpStatus.NOT_FOUND)
-            .body(ex.res())
-    }
-
-    @ExceptionHandler(AccountAlreadyExistsException::class)
-    fun handleAccountAlreadyExistsException(ex: AccountAlreadyExistsException, request: HttpServletRequest): ResponseEntity<MessageAndErrorCodeResponse> {
-        logger.warn("Account already exists: ${ex.message}")
-        return ResponseEntity
-            .status(HttpStatus.CONFLICT)
-            .body(ex.res())
-    }
-
     @ExceptionHandler(DomainAlreadyExistsException::class)
     fun handleDomainAlreadyExistsException(ex: DomainAlreadyExistsException, request: HttpServletRequest): ResponseEntity<MessageAndErrorCodeResponse> {
         logger.warn("Domain already exists: ${ex.message}")
@@ -112,27 +96,11 @@ class GlobalExceptionHandler {
         return ModelAndView("forward:/static/error.html")
     }
 
-    @ExceptionHandler(PermanentSlugException::class)
-    fun handlePermanentSlugException(ex: PermanentSlugException, request: HttpServletRequest): ResponseEntity<MessageAndErrorCodeResponse> {
-        logger.warn("Permanent slug exception: ${ex.message}")
-        return ResponseEntity
-            .status(HttpStatus.FORBIDDEN)
-            .body(ex.res())
-    }
-
     @ExceptionHandler(SlugAlreadyExistsException::class)
     fun handleSlugAlreadyExistsException(ex: SlugAlreadyExistsException, request: HttpServletRequest): ResponseEntity<MessageAndErrorCodeResponse> {
         logger.warn("Slug already exists: ${ex.message}")
         return ResponseEntity
             .status(HttpStatus.CONFLICT)
-            .body(ex.res())
-    }
-
-    @ExceptionHandler(SlugImmutableException::class)
-    fun handleSlugImmutableException(ex: SlugImmutableException, request: HttpServletRequest): ResponseEntity<MessageAndErrorCodeResponse> {
-        logger.warn("Slug is immutable: ${ex.message}")
-        return ResponseEntity
-            .status(HttpStatus.BAD_REQUEST)
             .body(ex.res())
     }
 

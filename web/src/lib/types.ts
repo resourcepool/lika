@@ -3,20 +3,90 @@
 export type Domain = {
   id: string
   standard: boolean
-  ownerId: string | null
   host: string
   apiBaseUrl: string
   landingBaseUrl: string | null
 }
 
-export type Account = {
+/** Each role includes the previous ones. Keys are viewers or editors only. */
+export type DomainRole = "viewer" | "editor" | "manager"
+
+/** The `lika` claim of a user token */
+export type LikaClaims = {
+  v: number
+  admin: boolean
+  domains: Record<string, DomainRole>
+}
+
+export type UserStatus = "invited" | "active" | "disabled"
+
+export type User = {
+  id: string
+  email: string
+  name: string
+  status: UserStatus
+  admin: boolean
+  domains: Record<string, DomainRole>
+  version: number
+  hasPassword: boolean
+  externalId: string | null
+  invitedBy: string | null
+  createdAt: string
+  lastLoginAt: string | null
+}
+
+export type AuthProvider = "local" | "firebase" | "keycloak"
+
+/** Single sign-on with the identity provider (authorization code with PKCE) */
+export type SsoConfig = {
+  label: string
+  authorizationEndpoint: string
+  clientId: string
+  scope: string
+  params: Record<string, string>
+}
+
+export type AuthConfig = {
+  provider: AuthProvider
+  setupRequired: boolean
+  mailEnabled: boolean
+  /** Public URL of the MCP server, when the API knows its public URL */
+  mcpUrl: string | null
+  /** Email and password typed in the sign-in form of Lika */
+  passwordSignIn: boolean
+  sso: SsoConfig | null
+  /** Where users manage their password, when Lika cannot */
+  accountUrl: string | null
+  /** How users who forgot their password get a new one */
+  passwordReset: "email" | "admin" | "provider"
+}
+
+export type InvitationInfo = { email: string; name: string; accountExists: boolean }
+
+export type AuthTokens = { accessToken: string; expiresIn: number; refreshToken: string; user: User }
+
+/** @param apiKey the user API key of the user, for the MCP server */
+export type Me = { user: User; claims: LikaClaims; provider: AuthProvider; apiKey: ApiKey | null }
+
+/** Invitation or password reset link, to pass on by hand when no email was sent */
+export type UserLink = { user: User; link: string; emailSent: boolean; expiresAt: string }
+
+export type ApiKey = {
   id: string
   name: string
-  global: boolean
-  defaultAccessToken: string
-  defaultPublicReadAccessToken: string
-  domainIds: string[]
+  admin: boolean
+  domains: Record<string, DomainRole>
+  prefix: string
+  createdBy: string | null
+  createdAt: string
+  expiresAt: string | null
+  lastUsedAt: string | null
+  /** Set on user API keys only */
+  userId: string | null
 }
+
+/** The secret is only returned on creation and regeneration */
+export type ApiKeySecret = { key: ApiKey; secret: string }
 
 export type LinkType = "SIMPLE" | "WITH_LANDING"
 
@@ -68,7 +138,8 @@ export type ImportCounts = { created: number; updated: number; skipped: number }
 export type ImportReport = {
   dryRun: boolean
   conflictMode: "skip" | "overwrite"
-  accounts: ImportCounts
+  users: ImportCounts
+  apiKeys: ImportCounts
   domains: ImportCounts
   links: ImportCounts
 }

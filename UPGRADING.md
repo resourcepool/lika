@@ -1,5 +1,62 @@
 # Upgrading Lika
 
+## 0.6.x → 0.7.0
+
+Lika now has **users**. People sign in to the web interface with an email and a password; **API keys are for applications** only. Rights are claims carried by the user's token: admin, or a role per domain.
+
+| Role | On its domain |
+|---|---|
+| `viewer` | reads and searches links |
+| `editor` | also creates, edits and deletes links |
+| `manager` | also invites users to the domain, sets their role there, and manages the API keys of the domain (users only) |
+| admin | everything: domains, users, keys, archives |
+
+### First start
+
+The API migrates existing data on first start:
+
+- Each account becomes API keys **keeping its token values**, so applications keep working: the read-write token of a global account becomes an admin key; the one of another account an `editor` key on its granted and owned domains; the read token a `viewer` key on the same domains (every domain for a global account). Accounts are then deleted. Domains have no owner anymore.
+- `security.default-global-access-token` is **deprecated**: it becomes the admin API key named after `security.default-global-name`. Remove it once you have created keys in the web interface.
+- Archives of 0.6 and before still import: their accounts become keys the same way.
+- Upgrading from 0.4 or older: start 0.6 once first, so that standard domains are granted to your accounts.
+
+Then create your admin account: as long as no admin exists, the API prints a **setup token** in its logs. Open the web interface, which shows the setup page, and paste it there. Invite everyone else from **Users**.
+
+### Configuration of the `api` image
+
+New variables, all described in [docs/CONFIGURATION.md](docs/CONFIGURATION.md):
+
+- `LIKA_WEB_URL` (**set it in production**): public URL of the web interface, used in invitation and password reset links.
+- `LIKA_AUTH_PROVIDER`: `local` (default), `keycloak` or `firebase`, with their `LIKA_JWT_SECRET`, `LIKA_KEYCLOAK_*` or `LIKA_FIREBASE_*` variables.
+- `LIKA_SETUP_TOKEN`: fixed setup token, for automated installs.
+- `LIKA_PUBLIC_API_URL`, `LIKA_MCP_ALLOWED_ORIGINS`: MCP server.
+- `MAILJET_API_KEY`, `MAILJET_API_SECRET`, `MAIL_FROM`, `MAIL_FROM_NAME`: emails.
+
+The `www` image needs no new variable.
+
+Check that the deprecated root key of the development configuration (`lika-client-secret`) is not active in production: see [Defaults to override in production](docs/CONFIGURATION.md#defaults-to-override-in-production).
+
+### Identity providers
+
+With `LIKA_AUTH_PROVIDER=keycloak` or `firebase`, credentials stay at the provider, and Lika keeps users, invitations and rights:
+
+- The first admin is created with the setup token, as with `local`. An account the provider already has for that email is linked; otherwise it is created with the password typed.
+- Invitations work the same. Someone who already has an account at the provider just accepts, then signs in with it. Accounts are also linked when their owner signs in with a verified email matching an invitation. Nobody gets in without an invitation.
+- Rights are written to the provider as the `lika` claim of the tokens (Keycloak user attribute and protocol mapper, Firebase custom claim).
+- Disabling a user, signing them out everywhere, or deleting them only affects Lika: their account at the provider, possibly shared with other applications, stays enabled. Deletion only removes the `lika` claim.
+- Keycloak: sign-in on the Keycloak page, passwords managed in Keycloak. Firebase: email and password typed in Lika, and Google when configured.
+
+### MCP server and user API keys
+
+The API serves an MCP server at `/mcp`, for AI assistants. It authenticates like the REST API, plus **user API keys**: each person can create one in their profile. It acts with their current rights and only works on `/mcp`. Tools and skills match the caller's rights. See [docs/MCP.md](docs/MCP.md).
+
+### Web interface
+
+- Sign-in with email and password; the API-key sign-in is gone, and browsers signed in with a key in 0.6 are signed out.
+- New pages: setup, invitation, forgotten and reset password, profile (name, password, user API key and MCP setup, sign out everywhere).
+- With Keycloak or Google, "Sign in with …" goes through the provider (`/auth/sso`, `/auth/callback`). Add `<web URL>/auth/callback` to the redirect URIs of the client.
+- **Users** and **API Keys** are under *Manage*, for admins and managers. `/admin/keys` redirects to `/keys`.
+
 ## 0.5.x → 0.6.0
 
 The web interface is rebuilt with Next.js. The image keeps its name (`<registry>/<project>/www`), its port (80) and its `/health` endpoint, but it is now a Node.js server instead of static files served by nginx: the browser no longer calls the API directly.

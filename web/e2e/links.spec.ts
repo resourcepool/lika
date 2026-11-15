@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test"
-import { apiCall, createDomain, signIn, unique } from "./support"
+import { apiCall, createDomain, signIn, unique, PROVIDER } from "./support"
+
+test.skip(PROVIDER === "keycloak", "signs in with a password")
 
 test("create, inspect, edit and delete a link", async ({ page }) => {
   const domain = await createDomain()

@@ -5,10 +5,7 @@ import li.lika.common.models.Domain
 import li.lika.common.models.DomainCreator
 import li.lika.common.models.DomainUpdate
 import li.lika.core.services.DomainService
-import li.lika.security.models.AccessTokenAuthentication
-import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
-import java.security.Principal
 
 @RequestMapping("/api/admin/domains")
 @RestController
@@ -25,13 +22,11 @@ class ApiAdminDomainController(private val domainService: DomainService) {
     }
 
     /**
-     * @param ownerId owning account, defaults to the caller
      * @param global marks the domain as a standard (system-wide) domain
      */
     @PostMapping
-    fun create(@RequestBody req: DomainCreator, @RequestParam(required = false) ownerId: String? = null, @RequestParam(required = false) global: Boolean? = null, @AuthenticationPrincipal p: Principal): Domain {
-        val caller = p as AccessTokenAuthentication
-        return domainService.create(req, ownerId ?: caller.getId(), global == true)
+    fun create(@RequestBody req: DomainCreator, @RequestParam(required = false) global: Boolean? = null): Domain {
+        return domainService.create(req, global == true)
     }
 
     /**
