@@ -44,12 +44,7 @@ class FirebaseIdentityProvider(props: AuthProperties, mapper: ObjectMapper) : Pr
     override val type = AuthProviderType.FIREBASE
     override val passwordSignIn = true
 
-    private val projectId: String
-    private val apiKey: String
     private val emulator: String? = fb.emulatorHost?.takeIf { it.isNotBlank() }
-    private val identityToolkit: String
-    private val secureToken: String
-    private val serviceAccount: ServiceAccount?
 
     private data class ServiceAccount(val email: String, val key: RSAPrivateKey, val tokenUri: String)
 
@@ -58,13 +53,15 @@ class FirebaseIdentityProvider(props: AuthProperties, mapper: ObjectMapper) : Pr
         check(missing.isEmpty()) { "LIKA_AUTH_PROVIDER=firebase needs ${missing.joinToString(", ")}" }
         check(emulator != null || !fb.serviceAccount.isNullOrBlank()) { "LIKA_AUTH_PROVIDER=firebase needs LIKA_FIREBASE_SERVICE_ACCOUNT (path to, or content of, a service account key)" }
         check(fb.googleClientId.isNullOrBlank() == fb.googleClientSecret.isNullOrBlank()) { "Set both LIKA_FIREBASE_GOOGLE_CLIENT_ID and LIKA_FIREBASE_GOOGLE_CLIENT_SECRET, or neither" }
-        projectId = fb.projectId!!
-        apiKey = fb.apiKey!!
-        identityToolkit = if (emulator != null) "http://$emulator/identitytoolkit.googleapis.com/v1" else "https://identitytoolkit.googleapis.com/v1"
-        secureToken = if (emulator != null) "http://$emulator/securetoken.googleapis.com/v1" else "https://securetoken.googleapis.com/v1"
-        serviceAccount = fb.serviceAccount?.takeIf { it.isNotBlank() }?.let { readServiceAccount(it) }
         if (emulator != null) logger.warn("Using the Firebase Auth emulator at {}: tokens are not signed. Never in production.", emulator)
     }
+
+    // After the checks above: properties are initialized in declaration order
+    private val projectId: String = fb.projectId!!
+    private val apiKey: String = fb.apiKey!!
+    private val identityToolkit: String = if (emulator != null) "http://$emulator/identitytoolkit.googleapis.com/v1" else "https://identitytoolkit.googleapis.com/v1"
+    private val secureToken: String = if (emulator != null) "http://$emulator/securetoken.googleapis.com/v1" else "https://securetoken.googleapis.com/v1"
+    private val serviceAccount: ServiceAccount? = fb.serviceAccount?.takeIf { it.isNotBlank() }?.let { readServiceAccount(it) }
 
     private fun readServiceAccount(value: String): ServiceAccount {
         val json = mapper.readTree(if (value.trimStart().startsWith("{")) value else Files.readString(Path.of(value)))

@@ -1,5 +1,12 @@
 # Upgrading Lika
 
+## 0.7.x → 0.8.0
+
+Nothing to migrate. New ways to deploy:
+
+- `docker-compose.yml` at the root builds and runs the API and the web interface from source, configured by a `.env` file (see `.env.example`). It is made for [Dokploy](docs/DOKPLOY.md), and works with `docker compose up -d --build` anywhere.
+- `api/Dockerfile` builds the API from source, choosing the database with the build argument `DB` (`sqlite`, `mongo` or `memory`). The image runs as an unprivileged user, keeps SQLite in `/data`, and has a health check. `api/api/Dockerfile`, which packages a jar built beforehand, is unchanged.
+
 ## 0.6.x → 0.7.0
 
 Lika now has **users**. People sign in to the web interface with an email and a password; **API keys are for applications** only. Rights are claims carried by the user's token: admin, or a role per domain.

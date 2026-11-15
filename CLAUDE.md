@@ -81,6 +81,10 @@ npm run build       # Standalone server in .next/standalone
   - `/signin`, `/setup`, `/invite/[token]`, `/forgot-password`, `/reset-password/[token]`: public
 - `web/AGENTS.md`: this Next.js version differs from older ones; read `web/node_modules/next/dist/docs/` before changing framework code
 
+### Deployment
+- `docker-compose.yml` (root) builds both images from source: `api/Dockerfile` (multi-stage, build arg `DB`) and `web/Dockerfile`; `.env.example`, `docs/DOKPLOY.md`
+- `api/api/Dockerfile` packages a jar prebuilt by CI (GitLab/GitHub workflows)
+
 ### Database Selection
 The API supports three database backends controlled by Gradle properties:
 - Default: In-memory H2 (for development/testing)

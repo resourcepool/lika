@@ -40,17 +40,15 @@ class KeycloakIdentityProvider(props: AuthProperties, mapper: ObjectMapper) : Pr
     override val type = AuthProviderType.KEYCLOAK
     override val passwordSignIn = false
 
-    private val realmUrl: String
-    private val adminUrl: String
-
     init {
         val missing = listOf("LIKA_KEYCLOAK_URL" to kc.url, "LIKA_KEYCLOAK_REALM" to kc.realm, "LIKA_KEYCLOAK_CLIENT_ID" to kc.clientId, "LIKA_KEYCLOAK_CLIENT_SECRET" to kc.clientSecret)
             .filter { it.second.isNullOrBlank() }.map { it.first }
         check(missing.isEmpty()) { "LIKA_AUTH_PROVIDER=keycloak needs ${missing.joinToString(", ")}" }
-        val base = kc.url!!.trimEnd('/')
-        realmUrl = "$base/realms/${kc.realm}"
-        adminUrl = "$base/admin/realms/${kc.realm}"
     }
+
+    // After the check above: properties are initialized in declaration order
+    private val realmUrl: String = "${kc.url!!.trimEnd('/')}/realms/${kc.realm}"
+    private val adminUrl: String = "${kc.url!!.trimEnd('/')}/admin/realms/${kc.realm}"
 
     private data class Endpoints(val issuer: String, val authorization: String, val token: String, val logout: String, val jwks: String)
 

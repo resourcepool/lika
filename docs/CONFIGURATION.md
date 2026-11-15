@@ -2,6 +2,8 @@
 
 Every setting of Lika, as environment variables. The API (`api` image) and the web interface (`www` image) read them when they start.
 
+`docker-compose.yml` at the root of the repository builds and runs both, from `api/Dockerfile` (build argument `DB`: `sqlite`, `mongo` or `memory`) and `web/Dockerfile`; [.env.example](../.env.example) lists its variables. See [DOKPLOY.md](DOKPLOY.md).
+
 ## API
 
 ### General
