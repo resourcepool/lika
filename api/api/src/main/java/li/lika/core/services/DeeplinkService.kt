@@ -102,7 +102,8 @@ class DeeplinkService(
         if (existing == null || existing.host != domain.host || existing.slug != slug) {
             assertSlugAvailable(domain.host, slug)
         }
-        val now = ZonedDateTime.now()
+        // Milliseconds: what every database keeps, so the link returned equals the link read back later
+        val now = ZonedDateTime.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS)
         val pl = Deeplink(
             existing?.id ?: UUID.randomUUID().toString(),
             domain.host,
