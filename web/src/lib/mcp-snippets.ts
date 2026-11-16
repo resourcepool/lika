@@ -25,7 +25,8 @@ export function mcpSnippet(client: McpClient, url: string, key: string = KEY_PLA
       return JSON.stringify({ servers: { lika: { type: "http", url, headers: { Authorization: auth } } } }, null, 2)
     case "claude-desktop":
       return JSON.stringify(
-        { mcpServers: { lika: { command: "npx", args: ["-y", "mcp-remote", url, "--header", "Authorization:${LIKA_AUTH}"], env: { LIKA_AUTH: auth } } } },
+        // X-Api-Key has no space in its value, which mcp-remote would split on
+        { mcpServers: { lika: { command: "npx", args: ["-y", "mcp-remote", url, "--header", `X-Api-Key:${key}`] } } },
         null,
         2,
       )

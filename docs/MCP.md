@@ -9,7 +9,7 @@ Lika exposes a [Model Context Protocol](https://modelcontextprotocol.io) server,
 
 ## Authentication
 
-Send `Authorization: Bearer <credential>` with every request. Three kinds of credentials are accepted:
+Send `Authorization: Bearer <credential>` with every request. API keys can also be sent as `X-Api-Key: <key>`, simpler for clients that split header values on spaces (Claude Desktop through `mcp-remote`). `Authorization` wins when both are sent. Three kinds of credentials are accepted:
 
 | Credential | Created in | Acts with | REST API | MCP |
 |---|---|---|---|---|
@@ -47,14 +47,13 @@ Claude Desktop reaches remote servers through [`mcp-remote`](https://www.npmjs.c
   "mcpServers": {
     "lika": {
       "command": "npx",
-      "args": ["-y", "mcp-remote", "https://go.example.com/mcp", "--header", "Authorization:${LIKA_AUTH}"],
-      "env": { "LIKA_AUTH": "Bearer lika_u_…" }
+      "args": ["-y", "mcp-remote", "https://go.example.com/mcp", "--header", "X-Api-Key:lika_u_…"]
     }
   }
 }
 ```
 
-The header goes through an environment variable because `mcp-remote` splits arguments on spaces.
+`mcp-remote` splits arguments on spaces: `X-Api-Key` has none, unlike `Authorization: Bearer …`.
 
 ### Cursor
 

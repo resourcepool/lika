@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.*
 import java.time.Instant
 
 class ApiKeysTest : ApiTestSupport() {
@@ -89,6 +90,19 @@ class ApiKeysTest : ApiTestSupport() {
 
         call(ADMIN_TOKEN, delete("/api/keys/${key.keyId}"), 204)
         call(regenerated.secret, get("/api/domains"), 401)
+    }
+
+    @Test
+    fun `keys are also accepted in the X-Api-Key header`() {
+        val domain = createDomain()
+        val key = createKey(mapOf(domain.id to "editor"))
+        mvc.perform(get("/api/domains").header("X-Api-Key", key.secret)).andExpect(status().isOk)
+        mvc.perform(get("/api/domains").header("X-Api-Key", "not-a-key")).andExpect(status().isUnauthorized)
+        // Empty: no credentials, as without the header
+        val anonymous = mvc.perform(get("/api/domains")).andReturn().response.status
+        mvc.perform(get("/api/domains").header("X-Api-Key", " ")).andExpect(status().`is`(anonymous))
+        // Authorization wins over X-Api-Key
+        mvc.perform(get("/api/domains").auth(key.secret).header("X-Api-Key", "not-a-key")).andExpect(status().isOk)
     }
 
     @Test

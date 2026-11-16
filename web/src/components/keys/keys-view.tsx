@@ -215,7 +215,8 @@ export function KeysView() {
         value={secret?.secret}
         description={
           <>
-            Send it as <code className="font-mono text-xs text-foreground">Authorization: Bearer &lt;key&gt;</code>.
+            Send it as <code className="font-mono text-xs text-foreground">Authorization: Bearer &lt;key&gt;</code> or{" "}
+            <code className="font-mono text-xs text-foreground">X-Api-Key: &lt;key&gt;</code>.
           </>
         }
         warning="Copy it now: it is not shown again. If it is lost, regenerate it."

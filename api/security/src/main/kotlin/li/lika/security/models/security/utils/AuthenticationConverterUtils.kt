@@ -7,11 +7,16 @@ import mu.KotlinLogging
 object AuthenticationConverterUtils {
     private val logger = KotlinLogging.logger {}
 
-    fun getCredentials(authHeaders: List<String>?, queryParams: List<String>?): Pair<CredentialsType, String>? {
+    /** Authorization: Bearer first, then X-Api-Key, then the query parameter */
+    fun getCredentials(authHeaders: List<String>?, apiKeyHeaders: List<String>?, queryParams: List<String>?): Pair<CredentialsType, String>? {
         if (!authHeaders.isNullOrEmpty()) {
             return Pair(CredentialsType.AUTH_HEADER, Headers.decodeHeader(authHeaders[0]))
         }
-        logger.debug("No Bearer Token. Checking query string.")
+        logger.debug("No Bearer Token. Checking X-Api-Key.")
+        apiKeyHeaders?.firstOrNull()?.trim()?.takeIf { it.isNotEmpty() }?.let {
+            return Pair(CredentialsType.API_KEY_HEADER, it)
+        }
+        logger.debug("No X-Api-Key. Checking query string.")
         if (!queryParams.isNullOrEmpty()) {
             return Pair(CredentialsType.QUERY_PARAM, queryParams[0])
         }

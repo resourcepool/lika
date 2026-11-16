@@ -132,6 +132,8 @@ curl -X POST https://go.example.com/api/links \
   -d '{"domainId": "<domain id>", "slug": "spring-sale", "targetUrl": "https://shop.example.com/spring"}'
 ```
 
+API keys can also be sent as `X-Api-Key: $LIKA_API_KEY`, on the API and the MCP server alike.
+
 The OpenAPI specification is served at `/v3/api-docs`, with Swagger UI at `/swagger-ui.html`. AI assistants connect to `https://go.example.com/mcp`: see [docs/MCP.md](docs/MCP.md).
 
 ## Documentation

@@ -1,6 +1,7 @@
 package li.lika.security
 
 import jakarta.servlet.http.HttpServletRequest
+import li.lika.security.core.Headers.API_KEY_HEADER_NAME
 import li.lika.security.core.Headers.AUTH_HEADER_NAME
 import li.lika.security.core.Params.ACCESS_TOKEN
 import li.lika.security.models.DummyAuthentication
@@ -18,8 +19,9 @@ class AppAuthenticationConverter :
 
     override fun convert(request: HttpServletRequest): Authentication {
         val authHeaders = request.getHeaders(AUTH_HEADER_NAME)?.toList()
+        val apiKeyHeaders = request.getHeaders(API_KEY_HEADER_NAME)?.toList()
         val queryParams = request.getParameterValues(ACCESS_TOKEN)?.toList()
-        val credentials = AuthenticationConverterUtils.getCredentials(authHeaders, queryParams)
+        val credentials = AuthenticationConverterUtils.getCredentials(authHeaders, apiKeyHeaders, queryParams)
 
         if (credentials == null) {
             logger.debug("Exhausted available authentications. No credentials provided. Invalid.")

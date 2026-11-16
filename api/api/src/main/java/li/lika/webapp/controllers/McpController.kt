@@ -28,8 +28,8 @@ class McpController(private val server: McpServer, private val props: McpPropert
         }
         val caller = SecurityContextHolder.getContext().authentication?.principal as? LikaPrincipal
             ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .header(HttpHeaders.WWW_AUTHENTICATE, "Bearer realm=\"lika\", error=\"invalid_token\", error_description=\"Send a Lika API key: Authorization: Bearer <key>\"")
-                .body(server.error(null, -32001, "Authentication required: send a Lika API key as Authorization: Bearer <key>"))
+                .header(HttpHeaders.WWW_AUTHENTICATE, "Bearer realm=\"lika\", error=\"invalid_token\", error_description=\"Send a Lika API key: Authorization: Bearer <key>, or X-Api-Key: <key>\"")
+                .body(server.error(null, -32001, "Authentication required: send a Lika API key as Authorization: Bearer <key> or X-Api-Key: <key>"))
 
         val message = try {
             mapper.readTree(body)

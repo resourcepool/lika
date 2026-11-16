@@ -39,6 +39,17 @@ class McpTest : ApiTestSupport() {
     }
 
     @Test
+    fun `MCP clients may send their key as X-Api-Key`() {
+        val key = userKey(createUser(admin = true))
+        val body = mvc.perform(post("/mcp").header("X-Api-Key", key).contentType(MediaType.APPLICATION_JSON).accept(MediaType.APPLICATION_JSON)
+            .content("""{"jsonrpc":"2.0","id":1,"method":"tools/list"}"""))
+            .andExpect(status().isOk).andReturn().response.contentAsString
+        assertTrue(mapper.readTree(body)["result"]["tools"].any { it["name"].asText() == "create_domain" })
+        mvc.perform(post("/mcp").header("X-Api-Key", "not-a-key").contentType(MediaType.APPLICATION_JSON)
+            .content("""{"jsonrpc":"2.0","id":1,"method":"tools/list"}""")).andExpect(status().isUnauthorized)
+    }
+
+    @Test
     fun `initialize negotiates the protocol, notifications are accepted`() {
         val init = rpc(ADMIN_TOKEN, "initialize", mapOf("protocolVersion" to "2025-06-18", "capabilities" to emptyMap<String, Any>(), "clientInfo" to mapOf("name" to "test", "version" to "1")))!!["result"]
         assertEquals("2025-06-18", init["protocolVersion"].asText())

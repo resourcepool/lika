@@ -8,7 +8,7 @@ describe("MCP client configurations", () => {
     for (const { id } of MCP_CLIENTS) {
       const snippet = mcpSnippet(id, url, "lika_u_secret")
       expect(snippet).toContain(url)
-      expect(snippet).toContain("Bearer lika_u_secret")
+      expect(snippet).toContain("lika_u_secret")
     }
   })
 
@@ -16,8 +16,8 @@ describe("MCP client configurations", () => {
     expect(JSON.parse(mcpSnippet("cursor", url)).mcpServers.lika).toEqual({ url, headers: { Authorization: `Bearer ${KEY_PLACEHOLDER}` } })
     expect(JSON.parse(mcpSnippet("vscode", url)).servers.lika.type).toBe("http")
     const desktop = JSON.parse(mcpSnippet("claude-desktop", url, "k")).mcpServers.lika
-    // mcp-remote splits arguments on spaces: the header value goes through an environment variable
-    expect(desktop.args).toContain("Authorization:${LIKA_AUTH}")
-    expect(desktop.env.LIKA_AUTH).toBe("Bearer k")
+    // mcp-remote splits arguments on spaces: X-Api-Key needs none
+    expect(desktop.args).toEqual(["-y", "mcp-remote", url, "--header", "X-Api-Key:k"])
+    expect(desktop.env).toBeUndefined()
   })
 })

@@ -172,7 +172,7 @@ class McpSkills(private val authorization: AuthorizationService, private val mcp
             # Lika REST API for applications
 
             Applications authenticate with an **API key** created by an admin or a domain manager: send `Authorization: Bearer <key>`
-            and `Accept: application/json`. User API keys (`lika_u_…`) only work on the MCP server, not here.
+            (or `X-Api-Key: <key>`) and `Accept: application/json`. User API keys (`lika_u_…`) only work on the MCP server, not here.
 
             Base URL: `$base`. OpenAPI: `$base/v3/api-docs`, Swagger UI: `$base/swagger-ui.html`.
 

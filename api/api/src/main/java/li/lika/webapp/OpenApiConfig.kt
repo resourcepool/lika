@@ -30,13 +30,23 @@ class OpenApiConfig {
                     SecurityScheme()
                         .type(SecurityScheme.Type.HTTP)
                         .scheme("bearer")
-                        .description("Access token, sent as `Authorization: Bearer <token>`")
+                        .description("Access token or API key, sent as `Authorization: Bearer <token>`")
+                ).addSecuritySchemes(
+                    API_KEY_AUTH,
+                    SecurityScheme()
+                        .type(SecurityScheme.Type.APIKEY)
+                        .`in`(SecurityScheme.In.HEADER)
+                        .name("X-Api-Key")
+                        .description("API key, sent as `X-Api-Key: <key>`")
                 )
             )
+            // Either scheme
             .addSecurityItem(SecurityRequirement().addList(BEARER_AUTH))
+            .addSecurityItem(SecurityRequirement().addList(API_KEY_AUTH))
     }
 
     companion object {
         const val BEARER_AUTH = "bearerAuth"
+        const val API_KEY_AUTH = "apiKeyAuth"
     }
 }
