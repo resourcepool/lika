@@ -83,7 +83,8 @@ npm run build       # Standalone server in .next/standalone
 
 ### Deployment
 - `api/Dockerfile` (multi-stage, build arg `DB`: sqlite|postgres|mongo|memory) and `web/Dockerfile` build from source, each with its `.env.example`; `docs/DOKPLOY.md` deploys them as two Dokploy applications; `docker-compose.yml` runs both on one machine
-- `api/api/Dockerfile` packages a jar prebuilt by CI (GitLab/GitHub workflows)
+- GitLab CI (`.gitlab-ci.yml`): tests, then on release tags `vX.Y.Z` the `package` stage builds `api/Dockerfile` (one image per `DB`) and `web/Dockerfile` and pushes them to the project registry (`$CI_REGISTRY_IMAGE/api`, `/www`); by hand on `main`
+- `api/api/Dockerfile` packages a prebuilt jar, for the GitHub workflow only
 
 ### Database Selection
 The API supports three database backends controlled by Gradle properties:

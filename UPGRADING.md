@@ -1,5 +1,10 @@
 # Upgrading Lika
 
+## 0.13.0 → 0.13.1
+
+- Images are published to the GitLab container registry of the project for each release, built from `api/Dockerfile` and `web/Dockerfile`: `api:vX.Y.Z-<db>` now also exists for PostgreSQL (`-postgres`), and `latest-<db>`, `latest` (API, SQLite) and `www:latest` follow the last release. See [Prebuilt images](README.md#prebuilt-images).
+- Creation and update dates of links are kept to the millisecond: a link returned when created now has the same dates as when read back.
+
 ## 0.12.x → 0.13.0
 
 - `LIKA_CLAIM_NAME` (default `lika`) renames the claim carrying the rights with Keycloak and Firebase, and the Keycloak user attribute, when another application already uses `lika`. Changing it updates the Keycloak mapper on start; the claim is rewritten at each user's next sign-in or token renewal. See [docs/auth](docs/auth/).

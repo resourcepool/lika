@@ -130,7 +130,7 @@ See [MCP.md](MCP.md).
 
 ### Database
 
-The database is chosen when building: build argument `DB` of `api/Dockerfile` (`sqlite` by default, `postgres`, `mongo`, or `memory` which loses everything on restart), or Gradle flag `-PdbSqlite`, `-PdbPostgres`, `-PdbMongo`. The images of the CI are tagged `-sqlite`, `-mongo` or `-memory`. Tables and collections are created and updated on start.
+The database is chosen when building: build argument `DB` of `api/Dockerfile` (`sqlite` by default, `postgres`, `mongo`, or `memory` which loses everything on restart), or Gradle flag `-PdbSqlite`, `-PdbPostgres`, `-PdbMongo`. The images published by the CI are tagged `<version>-sqlite`, `-postgres`, `-mongo` or `-memory` (see [Prebuilt images](../README.md#prebuilt-images)). Tables and collections are created and updated on start.
 
 | Variable | Description |
 |---|---|

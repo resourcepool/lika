@@ -1,18 +1,20 @@
-# GitLab CI/CD Pipeline for Lika Project
-# Refactored into build, package, and deploy stages
+# GitLab CI/CD of Lika: tests, then Docker images pushed to the project's container registry.
+#
+#   test     API tests (+ jar for the end-to-end tests), web unit and end-to-end tests
+#   package  images built from api/Dockerfile and web/Dockerfile, pushed to $CI_REGISTRY_IMAGE:
+#              api:<version>-<db>   db = sqlite, postgres, mongo, memory; also latest-<db>
+#              api:<version>        the SQLite image; also latest
+#              www:<version>        also latest
+#            On release tags vX.Y.Z (<version> = vX.Y.Z), after the tests pass.
+#            On the default branch, by hand (<version> = main, no latest).
 
 variables:
-  DOCKER_DRIVER: overlay2
-  DOCKER_TLS_CERTDIR: ""
-  REGISTRY: $CI_REGISTRY
-  API_IMAGE_NAME: $CI_PROJECT_PATH/api
-  WWW_IMAGE_NAME: $CI_PROJECT_PATH/www
+  API_IMAGE: $CI_REGISTRY_IMAGE/api
+  WWW_IMAGE: $CI_REGISTRY_IMAGE/www
 
 stages:
   - test
-  - build
   - package
-  - deploy
 
 # Cache configuration for Gradle
 cache:
@@ -89,339 +91,77 @@ test-web:
     expire_in: 1 week
 
 # ===============================
-# BUILD STAGE - Create artifacts
+# PACKAGE STAGE: build and push the images
 # ===============================
 
-
-# Build API artifacts
-build-api-memory:
-  stage: build
-  image: eclipse-temurin:21-jdk
-  script:
-    - cd api
-    - chmod +x gradlew
-    - ./gradlew build -x test
-  artifacts:
-    paths:
-      - api/api/build/libs/
-      - api/api/Dockerfile
-    expire_in: 1 hour
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
-
-build-api-mongo:
-  stage: build
-  image: eclipse-temurin:21-jdk
-  script:
-    - cd api
-    - chmod +x gradlew
-    - ./gradlew build -x test -PdbMongo
-  artifacts:
-    paths:
-      - api/api/build/libs/
-      - api/api/Dockerfile
-    expire_in: 1 hour
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
-
-build-api-sqlite:
-  stage: build
-  image: eclipse-temurin:21-jdk
-  script:
-    - cd api
-    - chmod +x gradlew
-    - ./gradlew build -x test -PdbSqlite
-  artifacts:
-    paths:
-      - api/api/build/libs/
-      - api/api/Dockerfile
-    expire_in: 1 hour
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
-
-
-# ==========================================
-# PACKAGE STAGE - Create container images
-# ==========================================
-
-# Package API with memory database
-package-api-memory:
+.package:
   stage: package
-  image: docker:24.0.5
+  image: docker:27
   services:
-    - docker:24.0.5-dind
+    - docker:27-dind
   variables:
     DOCKER_HOST: tcp://docker:2375
-  dependencies:
-    - build-api-memory
-  script:
-    - |
-      # Create image tags
-      if [[ "$CI_COMMIT_TAG" ]]; then
-        TAG="${CI_COMMIT_TAG}-memory"
-      else
-        TAG="${CI_COMMIT_SHA:0:8}-memory"
-      fi
-      
-      # Build Docker image
-      docker build -t "$REGISTRY/$API_IMAGE_NAME:$TAG" api/api/
-      
-      # Save image for deploy stage
-      docker save "$REGISTRY/$API_IMAGE_NAME:$TAG" | gzip > api-memory-image.tar.gz
-  artifacts:
-    paths:
-      - api-memory-image.tar.gz
-    expire_in: 1 hour
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_BUILDKIT: "1"
+  needs: [test-api, test-web]
+  cache: []
   rules:
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
-
-
-# Package API with SQLite database
-package-api-sqlite:
-  stage: package
-  image: docker:24.0.5
-  services:
-    - docker:24.0.5-dind
-  variables:
-    DOCKER_HOST: tcp://docker:2375
-  dependencies:
-    - build-api-sqlite
+      variables:
+        VERSION: $CI_COMMIT_TAG
+        LATEST: "true"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
+      variables:
+        VERSION: main
+        LATEST: "false"
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    # Layers of the previous image speed up the build, when there is one
+    - docker pull "$CACHE_FROM" || true
   script:
     - |
-      # Create image tags
-      if [[ "$CI_COMMIT_TAG" ]]; then
-        TAG="${CI_COMMIT_TAG}-sqlite"
-      else
-        TAG="${CI_COMMIT_SHA:0:8}-sqlite"
-      fi
-      
-      # Build Docker image
-      docker build -t "$REGISTRY/$API_IMAGE_NAME:$TAG" api/api/
-      
-      # Save image for deploy stage
-      docker save "$REGISTRY/$API_IMAGE_NAME:$TAG" | gzip > api-sqlite-image.tar.gz
-  artifacts:
-    paths:
-      - api-sqlite-image.tar.gz
-    expire_in: 1 hour
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+      set -e
+      docker build --pull --cache-from "$CACHE_FROM" --build-arg BUILDKIT_INLINE_CACHE=1 $BUILD_ARGS \
+        --label org.opencontainers.image.version="$VERSION" \
+        --label org.opencontainers.image.revision="$CI_COMMIT_SHA" \
+        --label org.opencontainers.image.source="$CI_PROJECT_URL" \
+        -t "$IMAGE:$TAG" "$CONTEXT"
+      docker push "$IMAGE:$TAG"
+      for extra in $EXTRA_TAGS; do
+        docker tag "$IMAGE:$TAG" "$IMAGE:$extra"
+        docker push "$IMAGE:$extra"
+      done
 
+# API, one image per database
+package-api:
+  extends: .package
+  parallel:
+    matrix:
+      - DB: [sqlite, postgres, mongo, memory]
+  before_script:
+    - IMAGE="$API_IMAGE"
+    - TAG="$VERSION-$DB"
+    - CONTEXT=api
+    - BUILD_ARGS="--build-arg DB=$DB"
+    - CACHE_FROM="$API_IMAGE:latest-$DB"
+    - EXTRA_TAGS=""
+    - if [ "$LATEST" = "true" ]; then EXTRA_TAGS="latest-$DB"; fi
+    # The SQLite image is the default one: also tagged without suffix
+    - if [ "$DB" = "sqlite" ]; then EXTRA_TAGS="$EXTRA_TAGS $VERSION"; fi
+    - if [ "$DB" = "sqlite" ] && [ "$LATEST" = "true" ]; then EXTRA_TAGS="$EXTRA_TAGS latest"; fi
+    - !reference [.package, before_script]
 
-# Package API with MongoDB database
-package-api-mongo:
-  stage: package
-  image: docker:24.0.5
-  services:
-    - docker:24.0.5-dind
-  variables:
-    DOCKER_HOST: tcp://docker:2375
-  dependencies:
-    - build-api-mongo
-  script:
-    - |
-      # Create image tags
-      if [[ "$CI_COMMIT_TAG" ]]; then
-        TAG="${CI_COMMIT_TAG}-mongo"
-      else
-        TAG="${CI_COMMIT_SHA:0:8}-mongo"
-      fi
-      
-      # Build Docker image
-      docker build -t "$REGISTRY/$API_IMAGE_NAME:$TAG" api/api/
-      
-      # Save image for deploy stage
-      docker save "$REGISTRY/$API_IMAGE_NAME:$TAG" | gzip > api-mongo-image.tar.gz
-  artifacts:
-    paths:
-      - api-mongo-image.tar.gz
-    expire_in: 1 hour
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
-
-
-# Package web application: the Dockerfile builds the Next.js server itself
+# Web interface
 package-www:
-  stage: package
-  image: docker:24.0.5
-  services:
-    - docker:24.0.5-dind
-  variables:
-    DOCKER_HOST: tcp://docker:2375
-  dependencies: []
-  script:
-    - |
-      # Create image tags
-      if [[ "$CI_COMMIT_TAG" ]]; then
-        TAG="$CI_COMMIT_TAG"
-      else
-        TAG="${CI_COMMIT_SHA:0:8}"
-      fi
-      
-      # Build Docker image
-      docker build -t "$REGISTRY/$WWW_IMAGE_NAME:$TAG" web/
-      
-      # Save image for deploy stage
-      docker save "$REGISTRY/$WWW_IMAGE_NAME:$TAG" | gzip > www-image.tar.gz
-  artifacts:
-    paths:
-      - www-image.tar.gz
-    expire_in: 1 hour
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
-
-
-# ================================================
-# DEPLOY STAGE - Push images to container registry
-# ================================================
-
-# Deploy API memory image
-deploy-api-memory:
-  stage: deploy
-  image: docker:24.0.5
-  services:
-    - docker:24.0.5-dind
-  variables:
-    DOCKER_HOST: tcp://docker:2375
-  dependencies:
-    - package-api-memory
+  extends: .package
   before_script:
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
-  script:
-    - |
-      # Load and push image
-      docker load < api-memory-image.tar.gz
-      
-      # Create image tags
-      if [[ "$CI_COMMIT_TAG" ]]; then
-        TAG="${CI_COMMIT_TAG}-memory"
-        LATEST_TAG="latest-memory"
-      else
-        TAG="${CI_COMMIT_SHA:0:8}-memory"
-        LATEST_TAG=""
-      fi
-      
-      # Push main tag
-      docker push "$REGISTRY/$API_IMAGE_NAME:$TAG"
-      
-      # Push latest tag if on default branch and it's a tag
-      if [[ -n "$LATEST_TAG" && "$CI_COMMIT_REF_NAME" == "$CI_DEFAULT_BRANCH" ]]; then
-        docker tag "$REGISTRY/$API_IMAGE_NAME:$TAG" "$REGISTRY/$API_IMAGE_NAME:$LATEST_TAG"
-        docker push "$REGISTRY/$API_IMAGE_NAME:$LATEST_TAG"
-      fi
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
-
-
-# Deploy API SQLite image
-deploy-api-sqlite:
-  stage: deploy
-  image: docker:24.0.5
-  services:
-    - docker:24.0.5-dind
-  variables:
-    DOCKER_HOST: tcp://docker:2375
-  dependencies:
-    - package-api-sqlite
-  before_script:
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
-  script:
-    - |
-      # Load and push image
-      docker load < api-sqlite-image.tar.gz
-      
-      # Create image tags
-      if [[ "$CI_COMMIT_TAG" ]]; then
-        TAG="${CI_COMMIT_TAG}-sqlite"
-        LATEST_TAG="latest-sqlite"
-      else
-        TAG="${CI_COMMIT_SHA:0:8}-sqlite"
-        LATEST_TAG=""
-      fi
-      
-      # Push main tag
-      docker push "$REGISTRY/$API_IMAGE_NAME:$TAG"
-      
-      # Push latest tag if on default branch and it's a tag
-      if [[ -n "$LATEST_TAG" && "$CI_COMMIT_REF_NAME" == "$CI_DEFAULT_BRANCH" ]]; then
-        docker tag "$REGISTRY/$API_IMAGE_NAME:$TAG" "$REGISTRY/$API_IMAGE_NAME:$LATEST_TAG"
-        docker push "$REGISTRY/$API_IMAGE_NAME:$LATEST_TAG"
-      fi
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
-
-
-# Deploy API MongoDB image
-deploy-api-mongo:
-  stage: deploy
-  image: docker:24.0.5
-  services:
-    - docker:24.0.5-dind
-  variables:
-    DOCKER_HOST: tcp://docker:2375
-  dependencies:
-    - package-api-mongo
-  before_script:
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
-  script:
-    - |
-      # Load and push image
-      docker load < api-mongo-image.tar.gz
-      
-      # Create image tags
-      if [[ "$CI_COMMIT_TAG" ]]; then
-        TAG="${CI_COMMIT_TAG}-mongo"
-        LATEST_TAG="latest-mongo"
-      else
-        TAG="${CI_COMMIT_SHA:0:8}-mongo"
-        LATEST_TAG=""
-      fi
-      
-      # Push main tag
-      docker push "$REGISTRY/$API_IMAGE_NAME:$TAG"
-      
-      # Push latest tag if on default branch and it's a tag
-      if [[ -n "$LATEST_TAG" && "$CI_COMMIT_REF_NAME" == "$CI_DEFAULT_BRANCH" ]]; then
-        docker tag "$REGISTRY/$API_IMAGE_NAME:$TAG" "$REGISTRY/$API_IMAGE_NAME:$LATEST_TAG"
-        docker push "$REGISTRY/$API_IMAGE_NAME:$LATEST_TAG"
-      fi
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
-
-
-# Deploy web application image
-deploy-www:
-  stage: deploy
-  image: docker:24.0.5
-  services:
-    - docker:24.0.5-dind
-  variables:
-    DOCKER_HOST: tcp://docker:2375
-  dependencies:
-    - package-www
-  before_script:
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
-  script:
-    - |
-      # Load and push image
-      docker load < www-image.tar.gz
-      
-      # Create image tags
-      if [[ "$CI_COMMIT_TAG" ]]; then
-        TAG="$CI_COMMIT_TAG"
-        LATEST_TAG="latest"
-      else
-        TAG="${CI_COMMIT_SHA:0:8}"
-        LATEST_TAG=""
-      fi
-      
-      # Push main tag
-      docker push "$REGISTRY/$WWW_IMAGE_NAME:$TAG"
-      
-      # Push latest tag if on default branch and it's a tag
-      if [[ -n "$LATEST_TAG" && "$CI_COMMIT_REF_NAME" == "$CI_DEFAULT_BRANCH" ]]; then
-        docker tag "$REGISTRY/$WWW_IMAGE_NAME:$TAG" "$REGISTRY/$WWW_IMAGE_NAME:$LATEST_TAG"
-        docker push "$REGISTRY/$WWW_IMAGE_NAME:$LATEST_TAG"
-      fi
-  rules:
-    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+    - IMAGE="$WWW_IMAGE"
+    - TAG="$VERSION"
+    - CONTEXT=web
+    - BUILD_ARGS=""
+    - CACHE_FROM="$WWW_IMAGE:latest"
+    - EXTRA_TAGS=""
+    - if [ "$LATEST" = "true" ]; then EXTRA_TAGS="latest"; fi
+    - !reference [.package, before_script]

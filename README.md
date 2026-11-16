@@ -75,6 +75,17 @@ docker compose up -d --build
 
 The web interface listens on port 3000, the API (short links) on 8080, with SQLite in the `lika-data` volume (`LIKA_DB=postgres` or `mongo` builds another database). Put a TLS reverse proxy in front of both.
 
+### Prebuilt images
+
+Each release `vX.Y.Z` publishes images to the GitLab container registry of the project, `registry.gitlab.com/resourcepool/lika`:
+
+| Image | Tags |
+|---|---|
+| `…/api` | `vX.Y.Z-sqlite`, `vX.Y.Z-postgres`, `vX.Y.Z-mongo`, `vX.Y.Z-memory`, and `latest-<db>`; `vX.Y.Z` and `latest` are the SQLite one |
+| `…/www` | `vX.Y.Z`, `latest` |
+
+They are the images `api/Dockerfile` and `web/Dockerfile` build, configured by the same environment variables.
+
 ### Deploy on Dokploy
 
 Two applications built from this repository: see [docs/DOKPLOY.md](docs/DOKPLOY.md).
