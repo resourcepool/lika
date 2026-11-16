@@ -18,7 +18,7 @@ tasks.getByName<Jar>("jar") {
 
 allprojects {
     group = "li.lika"
-    version = "0.15.0-SNAPSHOT"
+    version = "0.14.1"
     apply(plugin = "java")
     apply(plugin = "kotlin")
     apply(plugin = "io.spring.dependency-management")
