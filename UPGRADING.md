@@ -1,5 +1,10 @@
 # Upgrading Lika
 
+## 0.13.x → 0.14.0
+
+- Published images are multi-arch, amd64 and arm64: the same tags work on ARM servers (Graviton, Ampere, Raspberry Pi 64-bit, Apple silicon). See [Prebuilt images](README.md#prebuilt-images).
+- API keys can be sent as `X-Api-Key: <key>` as well as `Authorization: Bearer <key>`, on the REST API and the MCP server. The Claude Desktop configuration in the profile uses it: no environment variable needed by `mcp-remote` anymore. See [docs/MCP.md](docs/MCP.md#claude-desktop).
+
 ## 0.13.0 → 0.13.1
 
 - Images are published to the GitLab container registry of the project for each release, built from `api/Dockerfile` and `web/Dockerfile`: `api:vX.Y.Z-<db>` now also exists for PostgreSQL (`-postgres`), and `latest-<db>`, `latest` (API, SQLite) and `www:latest` follow the last release. See [Prebuilt images](README.md#prebuilt-images).

@@ -83,7 +83,7 @@ npm run build       # Standalone server in .next/standalone
 
 ### Deployment
 - `api/Dockerfile` (multi-stage, build arg `DB`: sqlite|postgres|mongo|memory) and `web/Dockerfile` build from source, each with its `.env.example`; `docs/DOKPLOY.md` deploys them as two Dokploy applications; `docker-compose.yml` runs both on one machine
-- GitLab CI (`.gitlab-ci.yml`): tests, then on release tags `vX.Y.Z` the `package` stage builds `api/Dockerfile` (one image per `DB`) and `web/Dockerfile` and pushes them to the project registry (`$CI_REGISTRY_IMAGE/api`, `/www`); by hand on `main`
+- GitLab CI (`.gitlab-ci.yml`): tests, then on release tags `vX.Y.Z` the `package` stage builds `api/Dockerfile` (one image per `DB`) and `web/Dockerfile` for amd64 (GitLab runners) and arm64 (group runner tagged `arm64`, privileged for docker:dind), pushed as `<tag>-<arch>`; the `publish` stage joins them into multi-arch tags in the project registry (`$CI_REGISTRY_IMAGE/api`, `/www`); by hand on `main`
 - `api/api/Dockerfile` packages a prebuilt jar, for the GitHub workflow only
 
 ### Database Selection

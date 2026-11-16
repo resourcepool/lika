@@ -84,6 +84,8 @@ Each release `vX.Y.Z` publishes images to the GitLab container registry of the p
 | `…/api` | `vX.Y.Z-sqlite`, `vX.Y.Z-postgres`, `vX.Y.Z-mongo`, `vX.Y.Z-memory`, and `latest-<db>`; `vX.Y.Z` and `latest` are the SQLite one |
 | `…/www` | `vX.Y.Z`, `latest` |
 
+Every tag is multi-arch, **amd64 and arm64**: Docker pulls the one matching the machine. Each architecture is also tagged on its own for a version, `vX.Y.Z-<db>-amd64`, `vX.Y.Z-<db>-arm64` (`vX.Y.Z-amd64` for `www`).
+
 They are the images `api/Dockerfile` and `web/Dockerfile` build, configured by the same environment variables.
 
 ### Deploy on Dokploy

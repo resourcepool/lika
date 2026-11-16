@@ -1,7 +1,9 @@
 # GitLab CI/CD of Lika: tests, then Docker images pushed to the project's container registry.
 #
 #   test     API tests (+ jar for the end-to-end tests), web unit and end-to-end tests
-#   package  images built from api/Dockerfile and web/Dockerfile, pushed to $CI_REGISTRY_IMAGE:
+#   package  images built from api/Dockerfile and web/Dockerfile, for amd64 (GitLab's runners)
+#            and arm64 (runner tagged arm64), pushed to $CI_REGISTRY_IMAGE as <tag>-amd64 and <tag>-arm64
+#   publish  multi-arch images joining both:
 #              api:<version>-<db>   db = sqlite, postgres, mongo, memory; also latest-<db>
 #              api:<version>        the SQLite image; also latest
 #              www:<version>        also latest
@@ -15,6 +17,7 @@ variables:
 stages:
   - test
   - package
+  - publish
 
 # Cache configuration for Gradle
 cache:
@@ -91,11 +94,10 @@ test-web:
     expire_in: 1 week
 
 # ===============================
-# PACKAGE STAGE: build and push the images
+# PACKAGE STAGE: build and push one image per architecture
 # ===============================
 
-.package:
-  stage: package
+.docker:
   image: docker:27
   services:
     - docker:27-dind
@@ -103,7 +105,6 @@ test-web:
     DOCKER_HOST: tcp://docker:2375
     DOCKER_TLS_CERTDIR: ""
     DOCKER_BUILDKIT: "1"
-  needs: [test-api, test-web]
   cache: []
   rules:
     - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
@@ -116,30 +117,9 @@ test-web:
       variables:
         VERSION: main
         LATEST: "false"
-  before_script:
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
-    # Layers of the previous image speed up the build, when there is one
-    - docker pull "$CACHE_FROM" || true
-  script:
-    - |
-      set -e
-      docker build --pull --cache-from "$CACHE_FROM" --build-arg BUILDKIT_INLINE_CACHE=1 $BUILD_ARGS \
-        --label org.opencontainers.image.version="$VERSION" \
-        --label org.opencontainers.image.revision="$CI_COMMIT_SHA" \
-        --label org.opencontainers.image.source="$CI_PROJECT_URL" \
-        -t "$IMAGE:$TAG" "$CONTEXT"
-      docker push "$IMAGE:$TAG"
-      for extra in $EXTRA_TAGS; do
-        docker tag "$IMAGE:$TAG" "$IMAGE:$extra"
-        docker push "$IMAGE:$extra"
-      done
 
-# API, one image per database
-package-api:
-  extends: .package
-  parallel:
-    matrix:
-      - DB: [sqlite, postgres, mongo, memory]
+# Image, tags and build arguments of each image, shared by its build and publish jobs
+.api-image:
   before_script:
     - IMAGE="$API_IMAGE"
     - TAG="$VERSION-$DB"
@@ -151,11 +131,8 @@ package-api:
     # The SQLite image is the default one: also tagged without suffix
     - if [ "$DB" = "sqlite" ]; then EXTRA_TAGS="$EXTRA_TAGS $VERSION"; fi
     - if [ "$DB" = "sqlite" ] && [ "$LATEST" = "true" ]; then EXTRA_TAGS="$EXTRA_TAGS latest"; fi
-    - !reference [.package, before_script]
 
-# Web interface
-package-www:
-  extends: .package
+.www-image:
   before_script:
     - IMAGE="$WWW_IMAGE"
     - TAG="$VERSION"
@@ -164,4 +141,71 @@ package-www:
     - CACHE_FROM="$WWW_IMAGE:latest"
     - EXTRA_TAGS=""
     - if [ "$LATEST" = "true" ]; then EXTRA_TAGS="latest"; fi
-    - !reference [.package, before_script]
+
+# amd64 on GitLab's instance runners, arm64 on the group runner tagged arm64 (docker executor, privileged for docker:dind)
+.package:
+  extends: .docker
+  stage: package
+  needs: [test-api, test-web]
+  tags: [$RUNNER]
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - |
+      set -e
+      # Layers of the previous image speed up the build, when there is one
+      docker pull "$CACHE_FROM" || true
+      docker build --pull --cache-from "$CACHE_FROM" --build-arg BUILDKIT_INLINE_CACHE=1 $BUILD_ARGS \
+        --label org.opencontainers.image.version="$VERSION" \
+        --label org.opencontainers.image.revision="$CI_COMMIT_SHA" \
+        --label org.opencontainers.image.source="$CI_PROJECT_URL" \
+        -t "$IMAGE:$TAG-$ARCH" "$CONTEXT"
+      docker push "$IMAGE:$TAG-$ARCH"
+
+# API, one image per database and architecture
+package-api:
+  extends: [.package, .api-image]
+  parallel:
+    matrix:
+      - DB: [sqlite, postgres, mongo, memory]
+        ARCH: amd64
+        RUNNER: saas-linux-small-amd64
+      - DB: [sqlite, postgres, mongo, memory]
+        ARCH: arm64
+        RUNNER: arm64
+
+# Web interface, one image per architecture
+package-www:
+  extends: [.package, .www-image]
+  parallel:
+    matrix:
+      - ARCH: amd64
+        RUNNER: saas-linux-small-amd64
+      - ARCH: arm64
+        RUNNER: arm64
+
+# ===============================
+# PUBLISH STAGE: multi-arch images, under the tags people pull
+# ===============================
+
+.publish:
+  extends: .docker
+  stage: publish
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - |
+      set -e
+      targets="-t $IMAGE:$TAG"
+      for extra in $EXTRA_TAGS; do targets="$targets -t $IMAGE:$extra"; done
+      docker buildx imagetools create $targets "$IMAGE:$TAG-amd64" "$IMAGE:$TAG-arm64"
+      docker buildx imagetools inspect "$IMAGE:$TAG"
+
+publish-api:
+  extends: [.publish, .api-image]
+  needs: [package-api]
+  parallel:
+    matrix:
+      - DB: [sqlite, postgres, mongo, memory]
+
+publish-www:
+  extends: [.publish, .www-image]
+  needs: [package-www]
