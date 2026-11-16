@@ -46,7 +46,7 @@ Traefik forwards `X-Forwarded-Proto` and `X-Forwarded-Host`: session cookies are
 2. Open `https://lika.example.com`: the setup page creates the first admin.
 3. In **Domains**, add `go.example.com` with the short URL base `https://go.example.com`, then invite your users.
 
-With Keycloak, add `https://lika.example.com/auth/callback` to the redirect URIs of the client. With Google sign-in through Firebase, add it to the OAuth client.
+With Keycloak, add `https://lika.example.com/auth/callback` to the redirect URIs of the client. With Google sign-in through Firebase, add it to the OAuth client. Install guides per provider: [docs/auth](auth/).
 
 ## Behind a CDN
 

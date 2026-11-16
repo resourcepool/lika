@@ -62,6 +62,8 @@ Whoever reaches the origin directly can pick the domain with this header. They o
 | `keycloak` | the sign-in page of a Keycloak realm | `LIKA_KEYCLOAK_*` |
 | `firebase` | email and password, and Google, through Firebase Authentication | `LIKA_FIREBASE_*` |
 
+Step-by-step install guides: [local](auth/LOCAL.md), [Keycloak](auth/KEYCLOAK.md), [Firebase](auth/FIREBASE.md).
+
 Whatever the provider, Lika keeps its users, invitations, rights and API keys. Rights are written to the provider as the `lika` claim of the users' tokens. Lika never disables or deletes accounts at the provider, because other applications may use them. A user who is disabled or removed in Lika only loses access to Lika.
 
 #### Local

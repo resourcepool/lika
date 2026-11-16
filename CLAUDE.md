@@ -29,7 +29,7 @@ cd api
 # Run with MongoDB database  
 ./gradlew :api:bootRun -PdbMongo
 
-# Keycloak / Firebase providers: see dev/README.md. Every env variable: docs/CONFIGURATION.md
+# Keycloak / Firebase providers: see dev/README.md, install guides in docs/auth/. Every env variable: docs/CONFIGURATION.md
 
 # Run tests
 ./gradlew test
