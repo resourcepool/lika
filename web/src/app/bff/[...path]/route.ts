@@ -53,10 +53,13 @@ async function forward(request: NextRequest, { params }: RouteContext<"/bff/[...
   if (renewed) {
     await saveSession(session, isSecureRequest(request.headers, request.nextUrl.protocol))
   }
-  return new Response(response.body, {
-    status: response.status,
-    headers: { "Content-Type": response.headers.get("content-type") ?? "application/json" },
-  })
+  const headers = new Headers({ "Content-Type": response.headers.get("content-type") ?? "application/json" })
+  // Downloads, e.g. the Claude plugin
+  const disposition = response.headers.get("content-disposition")
+  if (disposition) {
+    headers.set("Content-Disposition", disposition)
+  }
+  return new Response(response.body, { status: response.status, headers })
 }
 
 export { forward as GET, forward as POST, forward as PUT, forward as PATCH, forward as DELETE }

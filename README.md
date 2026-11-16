@@ -17,7 +17,7 @@ Lika is an open-source permalink service: short links on your own domains, manag
 - **Users and rights**: invite-only users, admins, and a role per domain (`viewer`, `editor`, `manager`). Domain managers invite people to their domains.
 - **Sign-in your way**: Lika's own accounts, a Keycloak realm (any LDAP or identity provider behind it), or Firebase Authentication with Google sign-in.
 - **API keys** for applications, scoped per domain or admin, and personal keys for AI assistants.
-- **MCP server**: Claude, Cursor, VS Code or any MCP client creates and manages links with the rights of its user.
+- **MCP server**: Claude, Cursor, VS Code or any MCP client creates and manages links with the rights of its user. A generated Claude plugin brings the skills that go with it.
 - **Import / export** of everything as JSON, whatever the database.
 - **Databases**: SQLite, PostgreSQL, MongoDB, or in memory for development.
 - **CDN-friendly**: serve short links through Cloudflare or CloudFront in front of the API.

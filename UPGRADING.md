@@ -1,5 +1,9 @@
 # Upgrading Lika
 
+## 0.15.x → 0.16.0
+
+- Claude takes skills from plugins, not from MCP servers: **Profile › AI assistants › Download plugin** generates a Claude plugin with the skills for your rights and the MCP server as connector (`GET /api/me/claude-plugin`). See [docs/MCP.md](docs/MCP.md#claude-plugin).
+
 ## 0.14.x → 0.15.0
 
 - Links can be filtered on their metadata: `GET /api/links?meta=campaign=summer&meta=lang` keeps the links having all of these entries (`key` alone: any value), whole, ignoring case. `GET /api/links/metadata` lists the keys in use with their most used values. The web interface offers both next to the search.

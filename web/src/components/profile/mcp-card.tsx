@@ -3,9 +3,9 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { format, formatDistanceToNow } from "date-fns"
-import { Bot, Loader2, RefreshCw, Trash2 } from "lucide-react"
+import { Bot, Download, Loader2, RefreshCw, Trash2 } from "lucide-react"
 import { toast } from "sonner"
-import { api } from "@/lib/client"
+import { ApiError, api, withQuery } from "@/lib/client"
 import { MCP_CLIENTS, mcpSnippet, type McpClient } from "@/lib/mcp-snippets"
 import type { ApiKeySecret, Me } from "@/lib/types"
 import { ConfirmDialog } from "@/components/app/confirm-dialog"
@@ -104,6 +104,8 @@ export function McpCard({ mcp }: { mcp: McpEndpoint }) {
         </div>
 
         <Snippets url={mcp.url} />
+
+        <ClaudePlugin mcp={mcp} />
       </CardContent>
 
       <ConfirmDialog
@@ -168,6 +170,44 @@ function Snippets({ url, secret }: { url: string; secret?: string }) {
         </Alert>
       )}
       {secret && <p className="text-xs text-muted-foreground">{hint}</p>}
+    </div>
+  )
+}
+
+/**
+ * Claude reads skills from plugins only, not from the MCP server: the plugin brings them, for the user's rights now.
+ */
+function ClaudePlugin({ mcp }: { mcp: McpEndpoint }) {
+  const download = useMutation({
+    mutationFn: async () => {
+      // The API knows the public URL when LIKA_PUBLIC_API_URL is set; otherwise, the one shown here
+      const response = await fetch(withQuery("/bff/api/me/claude-plugin", { mcpUrl: mcp.configured ? undefined : mcp.url }))
+      if (!response.ok) {
+        const error = (await response.json().catch(() => undefined)) as { message?: string } | undefined
+        throw new ApiError(response.status, error?.message ?? `Download failed (${response.status})`)
+      }
+      const url = URL.createObjectURL(await response.blob())
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "lika-claude-plugin.zip"
+      a.click()
+      URL.revokeObjectURL(url)
+    },
+    onError: (e) => toast.error(e.message),
+  })
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
+      <div className="min-w-0 flex-1 space-y-1 text-sm">
+        <p className="font-medium">Claude plugin</p>
+        <p className="text-xs text-muted-foreground">
+          The skills that teach Claude how to use Lika, for your current rights, with this MCP server as connector. Upload it in Claude, under Customize › Plugins ›
+          Add › Upload plugin. For Claude Code, set LIKA_API_KEY to your user API key. Download it again when your rights change.
+        </p>
+      </div>
+      <Button variant="secondary" size="sm" disabled={download.isPending} onClick={() => download.mutate()}>
+        {download.isPending ? <Loader2 className="animate-spin" /> : <Download />}
+        Download plugin
+      </Button>
     </div>
   )
 }

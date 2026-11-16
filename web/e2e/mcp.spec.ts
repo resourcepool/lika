@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises"
 import { expect, test } from "@playwright/test"
 import { API_URL, createDomain, createUser, signIn, PROVIDER } from "./support"
 
@@ -42,4 +43,20 @@ test("a user creates their user API key, connects an assistant, and revokes it",
   await page.getByRole("alertdialog").getByRole("button", { name: "Revoke" }).click()
   await expect(page.getByRole("button", { name: "Create user API key" })).toBeVisible()
   expect((await mcp(key, "tools/list")).status).toBe(401)
+})
+
+test("a user downloads the Claude plugin with the skills of their rights", async ({ page }) => {
+  const domain = await createDomain()
+  const user = await createUser({ [domain.id]: "editor" })
+  await signIn(page, user)
+  await page.goto("/profile")
+  const downloading = page.waitForEvent("download")
+  await page.getByRole("button", { name: "Download plugin" }).click()
+  const download = await downloading
+  expect(download.suggestedFilename()).toBe("lika-claude-plugin.zip")
+  const zip = await readFile((await download.path())!)
+  // A zip, holding the manifest and the skills
+  expect(zip.subarray(0, 2).toString()).toBe("PK")
+  expect(zip.includes("lika/.claude-plugin/plugin.json")).toBe(true)
+  expect(zip.includes("lika/skills/lika-links/SKILL.md")).toBe(true)
 })

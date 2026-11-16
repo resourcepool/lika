@@ -5,7 +5,12 @@ import li.lika.common.security.LikaPrincipal
 import li.lika.core.services.auth.ApiKeyService
 import li.lika.core.services.auth.SessionService
 import li.lika.core.services.auth.UserService
+import li.lika.core.services.mcp.ClaudePlugin
+import org.springframework.http.ContentDisposition
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
 
@@ -14,7 +19,12 @@ import org.springframework.web.bind.annotation.*
  */
 @RequestMapping("/api/me")
 @RestController
-class MeController(private val sessions: SessionService, private val users: UserService, private val keys: ApiKeyService) {
+class MeController(
+    private val sessions: SessionService,
+    private val users: UserService,
+    private val keys: ApiKeyService,
+    private val plugin: ClaudePlugin
+) {
 
     @GetMapping
     fun me(@AuthenticationPrincipal p: LikaPrincipal): Me = sessions.me(p)
@@ -39,6 +49,17 @@ class MeController(private val sessions: SessionService, private val users: User
      */
     @PostMapping("/api-key")
     fun createApiKey(@AuthenticationPrincipal p: LikaPrincipal): ApiKeySecret = keys.createUserKey(p as LikaPrincipal.UserPrincipal)
+
+    /**
+     * Claude plugin bringing the skills of the MCP server, for the rights of the user now, and the server as connector.
+     * [mcpUrl], the URL the web interface shows, is used when LIKA_PUBLIC_API_URL is not set.
+     */
+    @GetMapping("/claude-plugin")
+    fun claudePlugin(@AuthenticationPrincipal p: LikaPrincipal, @RequestParam(required = false) mcpUrl: String?): ResponseEntity<ByteArray> =
+        ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(ClaudePlugin.FILE_NAME).build().toString())
+            .contentType(MediaType.parseMediaType("application/zip"))
+            .body(plugin.zip(p, mcpUrl))
 
     @DeleteMapping("/api-key")
     @ResponseStatus(HttpStatus.NO_CONTENT)

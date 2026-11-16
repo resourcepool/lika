@@ -142,11 +142,28 @@ The server publishes guides in the Agent Skills format (`SKILL.md`: YAML frontma
 | `lika-admin` | admins | domains, people's lifecycle, admin keys, archives |
 | `lika-rest-api` | everyone | calling the REST API from an application with a key |
 
-They follow the [Skills over MCP](https://modelcontextprotocol.io/extensions/skills/overview) extension (`io.modelcontextprotocol/skills`), declared in the capabilities of `initialize` and `server/discover`: clients supporting it, like Claude, list them with `skills/list` and offer them with the connection. Each skill is `skill://<name>/SKILL.md` (`text/markdown`), with the SHA-256 digest and size of the file in its entry; `skills/get` returns one entry by URI.
+They follow the [Skills over MCP](https://modelcontextprotocol.io/extensions/skills/overview) extension (`io.modelcontextprotocol/skills`), declared in the capabilities of `initialize` and `server/discover`: clients supporting it list them with `skills/list` and offer them with the connection. Each skill is `skill://<name>/SKILL.md` (`text/markdown`), with the SHA-256 digest and size of the file in its entry; `skills/get` returns one entry by URI.
 
 For other clients, they are also plain MCP **resources** (`resources/list`, `resources/read`), and available through the `list_skills` and `get_skill` tools. The server's instructions point the model to them.
 
 To install them as local skills in an assistant that supports Agent Skills, save each one as `<name>/SKILL.md`. They reflect your rights at the time you save them.
+
+### Claude plugin
+
+Claude (claude.ai, Claude Desktop, Cowork, Claude Code) does not read skills from MCP servers: it takes them from **plugins**. **Profile › AI assistants › Download plugin** generates one, `lika-claude-plugin.zip` (`GET /api/me/claude-plugin`):
+
+```
+lika/
+├── .claude-plugin/plugin.json
+├── .mcp.json          the MCP server, X-Api-Key read from ${LIKA_API_KEY}
+├── README.md
+└── skills/<name>/SKILL.md
+```
+
+- **claude.ai, Claude Desktop, Cowork**: *Customize › Plugins › Add › Upload plugin*, then pick the zip. The skills load at once. The connector on the plugin's *Connectors* tab needs OAuth, which Lika does not implement: keep connecting the server as in [Claude Desktop](#claude-desktop).
+- **Claude Code**: unzip it, set `LIKA_API_KEY` to your user API key, and run `claude --plugin-dir ./lika`, or add it from a marketplace of yours. The plugin connects to the server itself.
+
+The plugin holds no secret. Its skills follow your rights when you download it, and its version changes each time: download it again when your rights change. Without `LIKA_PUBLIC_API_URL`, it points to the MCP URL your profile shows.
 
 ## Server configuration
 
