@@ -4,7 +4,7 @@ Lika exposes a [Model Context Protocol](https://modelcontextprotocol.io) server,
 
 - **Endpoint**: `https://<lika-api>/mcp`. Your profile in the web interface shows the exact URL.
 - **Transport**: Streamable HTTP, stateless. Each JSON-RPC request is a `POST` answered with JSON. There is no server-initiated stream, and no session.
-- **Protocol versions**: `2025-11-25`, `2025-06-18`, `2025-03-26`.
+- **Protocol versions**: `2026-07-28` (with `server/discover`), `2025-11-25`, `2025-06-18`, `2025-03-26`.
 - **Same rights as everywhere**: tools, skills and every call follow the rights of the credentials used, exactly as the REST API does.
 
 ## Authentication
@@ -142,7 +142,9 @@ The server publishes guides in the Agent Skills format (`SKILL.md`: YAML frontma
 | `lika-admin` | admins | domains, people's lifecycle, admin keys, archives |
 | `lika-rest-api` | everyone | calling the REST API from an application with a key |
 
-They are MCP **resources** (`resources/list`, `resources/read`), with URIs `lika://skills/<name>` and type `text/markdown`, and also available through the `list_skills` and `get_skill` tools. The server's `initialize` instructions point the model to them.
+They follow the [Skills over MCP](https://modelcontextprotocol.io/extensions/skills/overview) extension (`io.modelcontextprotocol/skills`), declared in the capabilities of `initialize` and `server/discover`: clients supporting it, like Claude, list them with `skills/list` and offer them with the connection. Each skill is `skill://<name>/SKILL.md` (`text/markdown`), with the SHA-256 digest and size of the file in its entry; `skills/get` returns one entry by URI.
+
+For other clients, they are also plain MCP **resources** (`resources/list`, `resources/read`), and available through the `list_skills` and `get_skill` tools. The server's instructions point the model to them.
 
 To install them as local skills in an assistant that supports Agent Skills, save each one as `<name>/SKILL.md`. They reflect your rights at the time you save them.
 

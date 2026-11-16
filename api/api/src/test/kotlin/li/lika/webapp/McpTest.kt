@@ -137,19 +137,48 @@ class McpTest : ApiTestSupport() {
         val domain = createDomain()
         val editor = userKey(createUser(mapOf(domain.id to "editor")))
         val resources = rpc(editor, "resources/list")!!["result"]["resources"].map { it["uri"].asText() }
-        assertEquals(listOf("lika://skills/lika-links", "lika://skills/lika-rest-api"), resources)
+        assertEquals(listOf("skill://lika-links/SKILL.md", "skill://lika-rest-api/SKILL.md"), resources)
 
-        val content = rpc(editor, "resources/read", mapOf("uri" to "lika://skills/lika-links"))!!["result"]["contents"][0]
+        val content = rpc(editor, "resources/read", mapOf("uri" to "skill://lika-links/SKILL.md"))!!["result"]["contents"][0]
         assertEquals("text/markdown", content["mimeType"].asText())
         val markdown = content["text"].asText()
-        assertTrue(markdown.startsWith("---\nname: lika-links\ndescription: "))
+        assertTrue(markdown.startsWith("---\nname: lika-links\ndescription: \"Create, find"))
         assertTrue(markdown.contains("\n# Short links on Lika\n"), "not indented")
         assertTrue(markdown.contains("`${domain["host"].asText()}` (id `${domain.id}`): **editor**"))
-        assertEquals(-32002, rpc(editor, "resources/read", mapOf("uri" to "lika://skills/lika-admin"))!!["error"]["code"].asInt())
+        assertEquals(-32602, rpc(editor, "resources/read", mapOf("uri" to "skill://lika-admin/SKILL.md"))!!["error"]["code"].asInt())
 
         val admin = rpc(ADMIN_TOKEN, "resources/list")!!["result"]["resources"].map { it["name"].asText() }
         assertEquals(listOf("lika-links", "lika-access", "lika-admin", "lika-rest-api"), admin)
         assertTrue(callTool(ADMIN_TOKEN, "get_skill", mapOf("name" to "lika-admin"))["content"][0]["text"].asText().contains("# Administering Lika"))
+    }
+
+    @Test
+    fun `skills follow the Skills over MCP extension`() {
+        val init = rpc(ADMIN_TOKEN, "initialize", mapOf("protocolVersion" to "2025-11-25"))!!["result"]
+        assertTrue(init["capabilities"]["extensions"].has("io.modelcontextprotocol/skills"))
+        val discover = rpc(ADMIN_TOKEN, "server/discover")!!["result"]
+        assertTrue("2026-07-28" in discover["supportedVersions"].map { it.asText() })
+        assertTrue(discover["capabilities"]["extensions"].has("io.modelcontextprotocol/skills"))
+
+        val list = rpc(ADMIN_TOKEN, "skills/list")!!["result"]
+        assertEquals("complete", list["resultType"].asText())
+        val admin = list["skills"].first { it["frontmatter"]["name"].asText() == "lika-admin" }
+        assertEquals("skill://lika-admin/SKILL.md", admin["uri"].asText())
+        assertTrue(admin["frontmatter"]["description"].asText().startsWith("Administer Lika: domains"))
+
+        // The manifest matches the bytes served, and the frontmatter parses back to the entry's
+        val text = rpc(ADMIN_TOKEN, "resources/read", mapOf("uri" to admin["uri"].asText()))!!["result"]["contents"][0]["text"].asText()
+        val bytes = text.toByteArray(Charsets.UTF_8)
+        val file = admin["resources"].single()
+        assertEquals(bytes.size, file["size"].asInt())
+        val sha = java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+        assertEquals("sha256:$sha", file["digest"].asText())
+        val yaml = org.yaml.snakeyaml.Yaml().load<Map<String, Any>>(text.removePrefix("---\n").substringBefore("\n---\n"))
+        assertEquals(mapper.convertValue(admin["frontmatter"], Map::class.java), yaml)
+
+        assertEquals(admin, rpc(ADMIN_TOKEN, "skills/get", mapOf("uri" to "skill://lika-admin/SKILL.md"))!!["result"]["skill"])
+        val viewer = createKey(mapOf(createDomain().id to "viewer")).secret
+        assertEquals(-32602, rpc(viewer, "skills/get", mapOf("uri" to "skill://lika-admin/SKILL.md"))!!["error"]["code"].asInt())
     }
 
     @Test

@@ -1,5 +1,9 @@
 # Upgrading Lika
 
+## 0.14.0 → 0.14.1
+
+- MCP skills follow the Skills over MCP extension: Claude and other clients supporting it now get them with the connection (`skills/list`). Their URIs change from `lika://skills/<name>` to `skill://<name>/SKILL.md`; the `list_skills` and `get_skill` tools are unchanged.
+
 ## 0.13.x → 0.14.0
 
 - Published images are multi-arch, amd64 and arm64: the same tags work on ARM servers (Graviton, Ampere, Raspberry Pi 64-bit, Apple silicon). See [Prebuilt images](README.md#prebuilt-images).

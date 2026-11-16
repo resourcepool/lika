@@ -9,13 +9,28 @@ import org.springframework.stereotype.Component
  * A guide for AI assistants, in the Agent Skills format (SKILL.md: frontmatter, then markdown).
  */
 data class Skill(val name: String, val description: String, val body: String) {
+    /** Skills over MCP (io.modelcontextprotocol/skills): the skill's directory is named after it */
     val uri: String
-        get() = "lika://skills/$name"
+        get() = "skill://$name/SKILL.md"
 
     val markdown: String
-        get() = "---\nname: $name\ndescription: $description\n---\n\n${dedent(body).trim()}\n"
+        get() = "---\nname: $name\ndescription: ${yamlString(description)}\n---\n\n${dedent(body).trim()}\n"
+
+    /** Entry of skills/list and skills/get: frontmatter and manifest of the bytes served by resources/read */
+    fun entry(): Map<String, Any> {
+        val bytes = markdown.toByteArray(Charsets.UTF_8)
+        val digest = java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+        return mapOf(
+            "uri" to uri,
+            "frontmatter" to mapOf("name" to name, "description" to description),
+            "resources" to listOf(mapOf("uri" to uri, "digest" to "sha256:$digest", "size" to bytes.size))
+        )
+    }
 
     companion object {
+        /** Double-quoted YAML scalar: descriptions hold ': ', which a plain scalar cannot */
+        fun yamlString(value: String) = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
+
         /**
          * Removes the indentation of the source code, taken from the first line. Unlike trimIndent,
          * lines interpolated without indentation do not prevent it.
