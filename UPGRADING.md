@@ -1,5 +1,10 @@
 # Upgrading Lika
 
+## 0.14.x → 0.15.0
+
+- Links can be filtered on their metadata: `GET /api/links?meta=campaign=summer&meta=lang` keeps the links having all of these entries (`key` alone: any value), whole, ignoring case. `GET /api/links/metadata` lists the keys in use with their most used values. The web interface offers both next to the search.
+- `POST /api/links/batch` applies one operation to up to 500 links, all or none: `delete`, `set_metadata`, `remove_metadata` or `set_expiry`. In the web interface, select links with their checkboxes.
+
 ## 0.14.0 → 0.14.1
 
 - MCP skills follow the Skills over MCP extension: Claude and other clients supporting it now get them with the connection (`skills/list`). Their URIs change from `lika://skills/<name>` to `skill://<name>/SKILL.md`; the `list_skills` and `get_skill` tools are unchanged.

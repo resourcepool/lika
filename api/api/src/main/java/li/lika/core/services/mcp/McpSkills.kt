@@ -196,13 +196,15 @@ class McpSkills(private val authorization: AuthorizationService, private val mcp
             | | |
             |---|---|
             | `GET /api/domains` | domains the key has a role on |
-            | `GET /api/links?domainId=&filter=&limit=&offset=&sort_by=&sort_direction=` | page of links (`totalItemCount`, `items`) |
+            | `GET /api/links?domainId=&filter=&meta=&limit=&offset=&sort_by=&sort_direction=` | page of links (`totalItemCount`, `items`). `meta` (repeatable): `key=value`, or `key` for any value, whole, ignoring case |
+            | `GET /api/links/metadata?domainId=` | metadata keys in use, with their most used values |
             | `GET /api/links/{id}` | one link |
             | `GET /api/search/slug/{slug}?domainId=` | one link by slug |
             | `GET /api/search/slug/suggestions/{text}?domainId=` | free slugs |
             | `POST /api/links` | create (editor): `{"domainId", "targetUrl", "slug"?, "options"?, "metadata"?}` |
             | `PUT /api/links` | update (editor): same body with `id` |
             | `DELETE /api/links/{id}` | delete (editor) |
+            | `POST /api/links/batch` | one operation on up to 500 links, all or none (editor): `{"ids", "action": "delete"\|"set_metadata"\|"remove_metadata"\|"set_expiry", "metadata"?, "keys"?, "expiryDate"?}` |
 
             `options`: `{"expiry": {"expiryDate": "2026-12-31"}, "activation": {"activationInstant": "…", "targetUrlBeforeActivation": "…"}, "password": {"password": "…"}}`.
             On update, omitting `password` keeps the current one; `{"remove": true}` drops it.

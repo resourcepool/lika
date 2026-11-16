@@ -8,7 +8,8 @@ import { formatDistanceToNowStrict } from "date-fns"
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ChevronsUpDown, ExternalLink, Link2, MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { api, withQuery } from "@/lib/client"
-import type { Link, Page, SortDirection, SortProperty } from "@/lib/types"
+import { metadataParams, type MetadataFilter } from "@/lib/link-batch"
+import type { Link, MetadataKeyValues, Page, SortDirection, SortProperty } from "@/lib/types"
 import { useDomains } from "@/hooks/use-lika"
 import { PageHeader } from "@/components/app/page-header"
 import { CopyButton } from "@/components/app/copy-button"
@@ -16,6 +17,9 @@ import { ALL_DOMAINS, DomainSwitcher } from "@/components/links/domain-switcher"
 import { LinkStatusBadges } from "@/components/links/link-status-badge"
 import { LinkFormDialog } from "@/components/links/link-form-dialog"
 import { LinkDetailsSheet } from "@/components/links/link-details-sheet"
+import { MetadataFilterBar } from "@/components/links/metadata-filter-bar"
+import { LinkBatchBar } from "@/components/links/link-batch-bar"
+import { Checkbox } from "@/components/ui/checkbox"
 import { ConfirmDialog } from "@/components/app/confirm-dialog"
 import { EmptyState } from "@/components/app/empty-state"
 import { Button } from "@/components/ui/button"
@@ -83,13 +87,43 @@ export function LinksView() {
     return () => clearTimeout(timer)
   }, [search])
 
+  const [metaFilters, setMetaFilters] = useState<MetadataFilter[]>([])
+  function changeMetaFilters(filters: MetadataFilter[]) {
+    setMetaFilters(filters)
+    setPageIndex(0)
+  }
+
+  // Selected links, kept across pages; a new search starts a new selection
+  const [selected, setSelected] = useState<Map<string, Link>>(new Map())
+  const selectionScope = JSON.stringify([domainId, filter, metaFilters])
+  const [scope, setScope] = useState(selectionScope)
+  if (scope !== selectionScope) {
+    setScope(selectionScope)
+    setSelected(new Map())
+  }
+  function toggle(links: Link[], on: boolean) {
+    setSelected((current) => {
+      const next = new Map(current)
+      links.forEach((link) => (on ? next.set(link.id, link) : next.delete(link.id)))
+      return next
+    })
+  }
+
+  const metadataValues = useQuery({
+    queryKey: ["link-metadata", domainId],
+    queryFn: () => api<MetadataKeyValues[]>("/api/links/metadata", { query: { domainId: domainId === ALL_DOMAINS ? undefined : domainId } }),
+    enabled: domains.isSuccess,
+    staleTime: 60_000,
+  })
+
   const links = useQuery({
-    queryKey: ["links", domainId, filter, sort, pageIndex, pageSize],
+    queryKey: ["links", domainId, filter, metaFilters, sort, pageIndex, pageSize],
     queryFn: () =>
       api<Page<Link>>("/api/links", {
         query: {
           domainId: domainId === ALL_DOMAINS ? undefined : domainId,
           filter,
+          meta: metadataParams(metaFilters),
           sort_by: sort.by,
           sort_direction: sort.direction,
           limit: pageSize,
@@ -128,6 +162,29 @@ export function LinksView() {
   const columns = useMemo(
     () =>
       helper.columns([
+        helper.display({
+          id: "select",
+          header: () => {
+            const rows = links.data?.items ?? []
+            const count = rows.filter((l) => selected.has(l.id)).length
+            return (
+              <Checkbox
+                aria-label="Select the links of this page"
+                disabled={rows.length === 0}
+                checked={count > 0 && count === rows.length ? true : count > 0 ? "indeterminate" : false}
+                onCheckedChange={() => toggle(rows, count < rows.length)}
+              />
+            )
+          },
+          cell: (info) => {
+            const link = info.row.original
+            return (
+              <span onClick={(e) => e.stopPropagation()} className="flex">
+                <Checkbox aria-label={`Select /${link.slug}`} checked={selected.has(link.id)} onCheckedChange={(on) => toggle([link], on === true)} />
+              </span>
+            )
+          },
+        }),
         helper.accessor("slug", {
           header: () => <SortHeader label="Short link" property="slug" sort={sort} onSort={setSort} />,
           cell: (info) => {
@@ -166,7 +223,7 @@ export function LinksView() {
           ),
         }),
       ]),
-    [sort],
+    [sort, selected, links.data],
   )
 
   const table = useTable({ features, columns, data: links.data?.items ?? [] })
@@ -185,10 +242,21 @@ export function LinksView() {
       </PageHeader>
 
       <div className="space-y-4 p-4 md:p-6">
-        <div className="relative max-w-sm">
-          <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search slug, URL or host" className="pl-9" aria-label="Search links" />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative w-full max-w-sm">
+            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search slug, URL or host" className="pl-9" aria-label="Search links" />
+          </div>
+          <MetadataFilterBar filters={metaFilters} onChange={changeMetaFilters} known={metadataValues.data ?? []} />
         </div>
+
+        {selected.size > 0 && (
+          <LinkBatchBar
+            selected={[...selected.values()]}
+            onClear={() => setSelected(new Map())}
+            onUpdated={(updated) => setSelected(new Map(updated.map((link) => [link.id, link])))}
+          />
+        )}
 
         {noDomain ? (
           <EmptyState title="No domain yet" description="This key has no domain to manage. Ask an admin to grant it one." />
@@ -216,7 +284,12 @@ export function LinksView() {
                     </TableRow>
                   ))}
                 {table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id} className="cursor-pointer" onClick={() => setDetails(row.original)}>
+                  <TableRow
+                    key={row.id}
+                    className="cursor-pointer"
+                    data-state={selected.has(row.original.id) ? "selected" : undefined}
+                    onClick={() => setDetails(row.original)}
+                  >
                     {row.getAllCells().map((cell) => (
                       <TableCell key={cell.id} className="py-2.5">
                         <table.FlexRender cell={cell} />
@@ -228,8 +301,8 @@ export function LinksView() {
                   <TableRow className="hover:bg-transparent">
                     <TableCell colSpan={columns.length}>
                       <EmptyState
-                        title={filter ? "No match" : "No link yet"}
-                        description={filter ? `Nothing matches “${filter}”.` : "Create your first short link."}
+                        title={filter || metaFilters.length ? "No match" : "No link yet"}
+                        description={filter || metaFilters.length ? "No link matches these filters." : "Create your first short link."}
                       />
                     </TableCell>
                   </TableRow>

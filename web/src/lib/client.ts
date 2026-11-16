@@ -14,7 +14,8 @@ export class ApiError extends Error {
 /** Error codes of the /bff route meaning the browser is no longer signed in */
 const SESSION_OVER = ["session-ended", "not-signed-in"]
 
-type Query = Record<string, string | number | boolean | undefined | null>
+/** A list repeats the parameter: `meta=a&meta=b` */
+type Query = Record<string, string | number | boolean | undefined | null | string[]>
 
 export function withQuery(path: string, query?: Query): string {
   if (!query) {
@@ -22,7 +23,9 @@ export function withQuery(path: string, query?: Query): string {
   }
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(query)) {
-    if (value !== undefined && value !== null && value !== "") {
+    if (Array.isArray(value)) {
+      value.forEach((item) => params.append(key, item))
+    } else if (value !== undefined && value !== null && value !== "") {
       params.set(key, String(value))
     }
   }

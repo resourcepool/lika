@@ -37,6 +37,8 @@ class DeeplinkService(
         const val CRON_SCHEDULER = "0 0 1 * * *"
         /** Creator of the links of the configuration */
         const val SYSTEM_CREATOR = "system"
+        const val MAX_METADATA_KEYS = 200
+        const val MAX_METADATA_VALUES = 100
         private val BCRYPT_HASH = Regex("^\\$2[aby]?\\$\\d{2}\\$.{53}$")
     }
 
@@ -191,6 +193,83 @@ class DeeplinkService(
             listOf(authorization.assertCan(caller, domainId, DomainRole.VIEWER).host)
         }
         return deeplinkDao.findPageForHosts(hosts, req)
+    }
+
+    /**
+     * Metadata keys used by the links of [domainId], or of every domain the caller can read, with their values.
+     */
+    @Transactional
+    fun metadataValues(caller: LikaPrincipal, domainId: String?): List<MetadataKeyValues> {
+        val hosts = if (domainId.isNullOrBlank()) {
+            authorization.accessibleDomains(caller).map { it.host }
+        } else {
+            listOf(authorization.assertCan(caller, domainId, DomainRole.VIEWER).host)
+        }
+        // Keys differing by case only are one key, as for filters: the first spelling met names it
+        val counts = TreeMap<String, MutableMap<String, Int>>(String.CASE_INSENSITIVE_ORDER)
+        for (host in hosts) {
+            for (link in deeplinkDao.findAllForHost(host)) {
+                for ((key, value) in link.metadata) {
+                    counts.getOrPut(key) { HashMap() }.merge(value, 1, Int::plus)
+                }
+            }
+        }
+        return counts.entries.take(MAX_METADATA_KEYS).map { (key, values) ->
+            // Most used values first
+            val top = values.entries.sortedWith(compareByDescending<Map.Entry<String, Int>> { it.value }.thenBy { it.key })
+            MetadataKeyValues(key, top.take(MAX_METADATA_VALUES).map { it.key }, values.values.sum())
+        }
+    }
+
+    /**
+     * Applies one operation to several links, all or none: every link must exist and be editable by the caller.
+     */
+    @Transactional
+    @CacheEvict("deeplinks", allEntries = true)
+    fun batch(caller: LikaPrincipal, req: LinkBatchRequest): LinkBatchResult {
+        val action = req.action ?: throw IllegalArgumentException("action is required: delete, set_metadata, remove_metadata or set_expiry")
+        val ids = req.ids.filter { it.isNotBlank() }.distinct()
+        require(ids.isNotEmpty()) { "ids is required" }
+        require(ids.size <= LinkBatchRequest.MAX_LINKS) { "At most ${LinkBatchRequest.MAX_LINKS} links at once" }
+        when (action) {
+            LinkBatchAction.SET_METADATA -> require(!req.metadata.isNullOrEmpty() && req.metadata!!.keys.none { it.isBlank() }) { "metadata is required, with non-empty keys" }
+            LinkBatchAction.REMOVE_METADATA -> require(!req.keys.isNullOrEmpty()) { "keys is required" }
+            else -> {}
+        }
+        val expiry = if (action == LinkBatchAction.SET_EXPIRY && !req.expiryDate.isNullOrBlank()) {
+            try {
+                LocalDate.parse(req.expiryDate)
+            } catch (e: java.time.format.DateTimeParseException) {
+                throw IllegalArgumentException("Invalid expiryDate: ${req.expiryDate}")
+            }
+        } else null
+
+        // Every link is checked before any is changed
+        val links = ids.map { id ->
+            val link = deeplinkDao.findOne(id) ?: throw PermalinkNotFoundException("no link with id $id")
+            try {
+                authorization.assertCanHost(caller, link.host, DomainRole.EDITOR)
+            } catch (e: InvalidDomainException) {
+                throw PermalinkNotFoundException("link $id is on ${link.host}, which ${caller.name} (${caller.id}) cannot edit")
+            }
+            link
+        }
+        if (action == LinkBatchAction.DELETE) {
+            links.forEach { deeplinkDao.deleteOne(it.id) }
+            return LinkBatchResult(links.size, emptyList())
+        }
+        val now = ZonedDateTime.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS)
+        val saved = links.map { link ->
+            when (action) {
+                LinkBatchAction.SET_METADATA -> link.metadata = link.metadata + req.metadata!!
+                LinkBatchAction.REMOVE_METADATA -> link.metadata = link.metadata - req.keys!!.toSet()
+                LinkBatchAction.SET_EXPIRY -> link.options.expiry = expiry?.let { ExpiryOptions(it) }
+                LinkBatchAction.DELETE -> {}
+            }
+            link.lastUpdateDateTime = now
+            deeplinkDao.save(link)
+        }
+        return LinkBatchResult(saved.size, saved)
     }
 
     @Transactional

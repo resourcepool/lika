@@ -125,6 +125,23 @@ export type LinkInput = {
   metadata: Record<string, string>
 }
 
+/** A metadata key in use, with its most used values */
+export type MetadataKeyValues = { key: string; values: string[]; linkCount: number }
+
+export type LinkBatchAction = "delete" | "set_metadata" | "remove_metadata" | "set_expiry"
+
+/** One operation on several links: all of them change, or none */
+export type LinkBatchRequest = {
+  ids: string[]
+  action: LinkBatchAction
+  metadata?: Record<string, string>
+  keys?: string[]
+  /** ISO date; null removes the expiry */
+  expiryDate?: string | null
+}
+
+export type LinkBatchResult = { count: number; links: Link[] }
+
 export type Page<T> = {
   totalItemCount: number
   items: T[]

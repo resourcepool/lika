@@ -13,6 +13,7 @@ Lika is an open-source permalink service: short links on your own domains, manag
   - *password*: visitors type a password before being redirected;
   - *landing page*: the link opens the landing page of its domain instead of redirecting directly;
   - free-form *metadata*.
+- **Search and bulk changes**: find links by text and by metadata (`campaign = summer`), select many, then set or remove metadata, set the expiry, or delete them at once.
 - **Users and rights**: invite-only users, admins, and a role per domain (`viewer`, `editor`, `manager`). Domain managers invite people to their domains.
 - **Sign-in your way**: Lika's own accounts, a Keycloak realm (any LDAP or identity provider behind it), or Firebase Authentication with Google sign-in.
 - **API keys** for applications, scoped per domain or admin, and personal keys for AI assistants.

@@ -7,6 +7,7 @@ import li.lika.common.models.dtos.PageResponse
 import li.lika.common.persistence.DeeplinkDao
 import li.lika.core.persistence.models.toDb
 import li.lika.core.persistence.repository.PermalinkRepository
+import li.lika.core.persistence.repository.utils.DeeplinkSpecifications
 import li.lika.core.persistence.repository.utils.toPageResponse
 import li.lika.core.persistence.repository.utils.toSpringSort
 import mu.KotlinLogging
@@ -53,10 +54,10 @@ class DeeplinkDaoSQLiteImpl(private val repository: PermalinkRepository, private
         if (hosts.isEmpty()) {
             return PageResponse(req, 0, emptyList())
         }
-        val results = if (req.filter.isNullOrBlank()) {
+        val results = if (req.filter.isNullOrBlank() && req.metadata.isEmpty()) {
             repository.findAllByHostIn(hosts, pageRequest)
         } else {
-            repository.findAllByHostInAndSearchStringLikeIgnoreCase(hosts, "%" + req.filter + "%", pageRequest)
+            repository.findAll(DeeplinkSpecifications.matching(hosts, req, mapper), pageRequest)
         }
         return results.toPageResponse(req) { db -> db.toDomain(mapper) }
     }

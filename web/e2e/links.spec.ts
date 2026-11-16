@@ -80,3 +80,51 @@ test("search, sorting and scheduled status", async ({ page }) => {
   await page.getByLabel("Search links").fill("bravo")
   await expect(rows).toHaveCount(1)
 })
+
+test("filter on metadata, then change and delete the selected links at once", async ({ page }) => {
+  const domain = await createDomain()
+  const create = (slug: string, metadata: Record<string, string>) =>
+    apiCall("/api/links", { method: "POST", body: { targetUrl: `https://example.com/${slug}`, domainId: domain.id, slug, metadata } })
+  await create("fr-summer", { campaign: "summer", lang: "fr" })
+  await create("en-summer", { campaign: "summer", lang: "en" })
+  await create("winter", { campaign: "winter" })
+  await signIn(page)
+  await page.goto(`/links?domain=${domain.id}`)
+  const rows = page.getByRole("row").filter({ hasText: domain.host })
+  await expect(rows).toHaveCount(3)
+
+  await page.getByRole("button", { name: "Filter by metadata" }).click()
+  await page.getByLabel("Metadata key").fill("campaign")
+  await page.getByLabel("Metadata value").fill("Summer")
+  await page.getByRole("button", { name: "Add", exact: true }).click()
+  await expect(rows).toHaveCount(2)
+  await expect(page.getByRole("button", { name: "Remove filter campaign" })).toBeVisible()
+
+  await page.getByLabel("Select the links of this page").click()
+  const toolbar = page.getByRole("toolbar", { name: "Selected links" })
+  await expect(toolbar).toContainText("2 links selected")
+
+  await toolbar.getByRole("button", { name: "Set metadata" }).click()
+  const dialog = page.getByRole("dialog")
+  await dialog.getByLabel("Key").fill("season")
+  await dialog.getByLabel("Value").fill("2026")
+  await dialog.getByRole("button", { name: "Apply to 2 links" }).click()
+  await expect(dialog).toBeHidden()
+
+  // Both carry the new entry, and kept theirs
+  await page.getByRole("button", { name: "Filter", exact: true }).click()
+  await page.getByLabel("Metadata key").fill("season")
+  await page.getByRole("button", { name: "Add", exact: true }).click()
+  await expect(rows).toHaveCount(2)
+
+  await page.getByLabel("Select /fr-summer").click()
+  await expect(toolbar).toContainText("1 link selected")
+  await toolbar.getByRole("button", { name: "Delete" }).click()
+  await page.getByRole("alertdialog").getByRole("button", { name: "Delete" }).click()
+  await expect(rows).toHaveCount(1)
+  await expect(rows.first()).toContainText("/en-summer")
+  await expect(toolbar).toBeHidden()
+
+  await page.getByRole("button", { name: "Clear filters" }).click()
+  await expect(rows).toHaveCount(2)
+})
