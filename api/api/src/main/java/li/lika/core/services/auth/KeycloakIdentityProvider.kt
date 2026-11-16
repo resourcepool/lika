@@ -8,7 +8,6 @@ import jakarta.annotation.PostConstruct
 import li.lika.common.exceptions.IdentityProviderException
 import li.lika.common.exceptions.InvalidCredentialsException
 import li.lika.common.models.AuthProviderType
-import li.lika.common.models.LikaClaims
 import li.lika.common.models.SsoConfig
 import li.lika.common.models.User
 import li.lika.core.props.AuthProperties
@@ -28,14 +27,18 @@ import java.time.Instant
 /**
  * Users sign in with a Keycloak realm (authorization code with PKCE).
  *
- * Rights are written to the user attribute `lika`, which a protocol mapper of the client puts in the tokens as
- * the `lika` claim. Lika declares the attribute in the realm's user profile and creates the mapper by itself.
+ * Rights are written to the user attribute `lika` (or LIKA_CLAIM_NAME), which a protocol mapper of the client
+ * puts in the tokens as the claim of the same name. Lika declares the attribute in the realm's user profile and
+ * creates or updates the mapper by itself.
  */
 @Component
 @ConditionalOnProperty(name = ["lika.auth.provider"], havingValue = "keycloak")
-class KeycloakIdentityProvider(props: AuthProperties, mapper: ObjectMapper) : ProviderSupport(mapper, "Keycloak"), IdentityProvider {
+class KeycloakIdentityProvider(props: AuthProperties, mapper: ObjectMapper) : ProviderSupport(mapper, "Keycloak", props.claimName), IdentityProvider {
     private val logger = KotlinLogging.logger {}
     private val kc = props.keycloak
+
+    /** User attribute holding the rights, named like the claim */
+    private val attribute = claimName
 
     override val type = AuthProviderType.KEYCLOAK
     override val passwordSignIn = false
@@ -147,7 +150,7 @@ class KeycloakIdentityProvider(props: AuthProperties, mapper: ObjectMapper) : Pr
         val rep = mutableMapOf<String, Any>(
             "username" to user.email, "email" to user.email, "emailVerified" to true, "enabled" to true,
             "firstName" to first, "lastName" to last,
-            "attributes" to mapOf(ATTRIBUTE to listOf(claimsJson(user)))
+            "attributes" to mapOf(attribute to listOf(claimsJson(user)))
         )
         password?.let { rep["credentials"] = listOf(mapOf("type" to "password", "value" to it, "temporary" to false)) }
         try {
@@ -178,7 +181,7 @@ class KeycloakIdentityProvider(props: AuthProperties, mapper: ObjectMapper) : Pr
         // Full representation: Keycloak replaces the attributes with the ones sent
         val rep = admin("GET", "/users/$externalId") as ObjectNode
         val attributes = (rep.get("attributes") as? ObjectNode) ?: rep.putObject("attributes")
-        if (value == null) attributes.remove(ATTRIBUTE) else attributes.set<ArrayNode>(ATTRIBUTE, mapper.createArrayNode().add(value))
+        if (value == null) attributes.remove(attribute) else attributes.set<ArrayNode>(attribute, mapper.createArrayNode().add(value))
         admin("PUT", "/users/$externalId", rep)
     }
 
@@ -206,47 +209,55 @@ class KeycloakIdentityProvider(props: AuthProperties, mapper: ObjectMapper) : Pr
             val token = serviceToken()
             // User profile (Keycloak 24+): undeclared attributes are dropped
             val profile = runCatching { json("GET", "$adminUrl/users/profile", token) }.getOrNull()
-            if (profile != null && profile.path("attributes").none { it.path("name").asText() == ATTRIBUTE }) {
-                val attribute = mapper.createObjectNode()
-                    .put("name", ATTRIBUTE)
+            if (profile != null && profile.path("attributes").none { it.path("name").asText() == attribute }) {
+                val declaration = mapper.createObjectNode()
+                    .put("name", attribute)
                     .put("displayName", "Lika rights")
                     .put("multivalued", false)
-                attribute.putObject("permissions").also {
+                declaration.putObject("permissions").also {
                     it.putArray("view").add("admin")
                     it.putArray("edit").add("admin")
                 }
-                (profile.get("attributes") as ArrayNode).add(attribute)
+                (profile.get("attributes") as ArrayNode).add(declaration)
                 json("PUT", "$adminUrl/users/profile", token, profile)
-                logger.info("Declared the attribute {} in the user profile of realm {}", ATTRIBUTE, kc.realm)
+                logger.info("Declared the attribute {} in the user profile of realm {}", attribute, kc.realm)
             }
             val client = json("GET", "$adminUrl/clients?clientId=${URLEncoder.encode(kc.clientId, Charsets.UTF_8)}", token).firstOrNull()
                 ?: throw IdentityProviderException("Keycloak client ${kc.clientId} not found in realm ${kc.realm}")
             val clientUuid = client["id"].asText()
             val mappers = json("GET", "$adminUrl/clients/$clientUuid/protocol-mappers/models", token)
-            if (mappers.none { it.path("name").asText() == MAPPER }) {
+            val config = mapOf(
+                "user.attribute" to attribute,
+                "claim.name" to claimName,
+                "jsonType.label" to "JSON",
+                "access.token.claim" to "true",
+                "id.token.claim" to "true",
+                "userinfo.token.claim" to "true",
+                "introspection.token.claim" to "true",
+                "multivalued" to "false"
+            )
+            val existing = mappers.firstOrNull { it.path("name").asText() == MAPPER }
+            if (existing == null) {
                 json("POST", "$adminUrl/clients/$clientUuid/protocol-mappers/models", token, mapOf(
                     "name" to MAPPER,
                     "protocol" to "openid-connect",
                     "protocolMapper" to "oidc-usermodel-attribute-mapper",
-                    "config" to mapOf(
-                        "user.attribute" to ATTRIBUTE,
-                        "claim.name" to LikaClaims.CLAIM_NAME,
-                        "jsonType.label" to "JSON",
-                        "access.token.claim" to "true",
-                        "id.token.claim" to "true",
-                        "userinfo.token.claim" to "true",
-                        "introspection.token.claim" to "true",
-                        "multivalued" to "false"
-                    )
+                    "config" to config
                 ))
-                logger.info("Created the protocol mapper {} on client {}", MAPPER, kc.clientId)
+                logger.info("Created the protocol mapper {} on client {}, claim {}", MAPPER, kc.clientId, claimName)
+            } else if (existing.path("config").path("user.attribute").asText() != attribute || existing.path("config").path("claim.name").asText() != claimName) {
+                // LIKA_CLAIM_NAME changed: the mapper follows
+                val updated = (existing as ObjectNode).deepCopy()
+                val updatedConfig = (updated.get("config") as? ObjectNode) ?: updated.putObject("config")
+                config.forEach { (k, v) -> updatedConfig.put(k, v) }
+                json("PUT", "$adminUrl/clients/$clientUuid/protocol-mappers/models/${existing["id"].asText()}", token, updated)
+                logger.info("Updated the protocol mapper {} on client {}: claim {}", MAPPER, kc.clientId, claimName)
             }
             setupDone = true
         }
     }
 
     companion object {
-        const val ATTRIBUTE = "lika"
         const val MAPPER = "lika rights"
     }
 }

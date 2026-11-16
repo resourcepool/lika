@@ -1,5 +1,10 @@
 # Upgrading Lika
 
+## 0.12.x → 0.13.0
+
+- `LIKA_CLAIM_NAME` (default `lika`) renames the claim carrying the rights with Keycloak and Firebase, and the Keycloak user attribute, when another application already uses `lika`. Changing it updates the Keycloak mapper on start; the claim is rewritten at each user's next sign-in or token renewal. See [docs/auth](docs/auth/).
+- Firebase: Lika now keeps the custom claims other applications wrote on an account. It used to replace them all with its own, and to erase them when a user was deleted in Lika.
+
 ## 0.11.x → 0.12.0
 
 - Links not found are no longer logged by default. `LOGGING_LEVEL_LI_LIKA_NOTFOUND=DEBUG` logs why, with the slug, the domain looked up (host and id) and the headers it came from: useful behind a CDN. See [Behind a CDN](docs/CONFIGURATION.md#behind-a-cdn).

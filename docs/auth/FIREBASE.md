@@ -9,9 +9,62 @@ Lika still keeps its users, invitations and rights. Nobody gets in without an in
 - **Email and password**: the API checks them with Firebase (`accounts:signInWithPassword`) and gets a Firebase ID token and refresh token, which the web server keeps in its encrypted session cookie.
 - **Google**: "Sign in with Google" sends the browser to Google, back to `<web URL>/auth/callback`. The API exchanges the code with Google, then signs in to Firebase with the Google ID token.
 - **Accounts**: Lika links a Firebase account to a Lika user by its id, or the first time, by its **verified email**. When an invitation is accepted and no account has that email, Lika creates one with the password typed, marked verified.
-- **Rights**: written as the custom claim `lika` of the account. Firebase limits custom claims to 1000 characters, about 15 to 20 domains per user; admins need none.
+- **Rights**: written as the custom claim `lika` of the account (or `LIKA_CLAIM_NAME`), next to the custom claims of other applications: see [Claims](#claims).
 - **Through a service account**, Lika finds and creates accounts, sets passwords and writes claims. It never disables nor deletes Firebase accounts: disabling or deleting a user in Lika only removes their access to Lika (and their `lika` claim).
 - **Tokens** are checked against Google's public keys, for the issuer `https://securetoken.google.com/<project id>` and the audience `<project id>`.
+
+## Claims
+
+### Standard claims Lika reads
+
+Lika checks the signature of Firebase ID tokens with Google's public keys, then reads:
+
+| Claim | Used for |
+|---|---|
+| `iss` | must be `https://securetoken.google.com/<LIKA_FIREBASE_PROJECT_ID>` |
+| `aud` | must be `LIKA_FIREBASE_PROJECT_ID` |
+| `exp`, `iat` | validity |
+| `sub` | Firebase user id (`localId`), stored as the user's `externalId` |
+| `email`, `email_verified` | linking an account to a Lika user the first time, only when the email is verified |
+| `auth_time` | when the user signed in: *sign out everywhere*, a password reset or disabling the user refuse sessions opened before |
+
+### The rights claim: `custom claim `lika``
+
+Lika writes the rights of each user to the custom claims of their Firebase account, which Firebase puts in every ID token issued afterwards:
+
+```json
+"lika": { "v": 7, "admin": false, "domains": { "3f2a…": "editor", "9c1d…": "viewer" } }
+```
+
+| Field | Meaning |
+|---|---|
+| `v` | Version of the user's rights in Lika. It changes whenever their rights or status change, or their sessions are revoked. |
+| `admin` | `true` for admins, who have every right; their `domains` is then empty. |
+| `domains` | Role per domain id: `viewer`, `editor` or `manager`. |
+
+How Lika uses it:
+
+- **Lika's database stays the reference.** On every request, the rights applied are the ones Lika holds, not the ones in the token. The claim is there so that the token says who may do what, for Lika and for whoever reads it.
+- **`v` detects outdated tokens.** A token whose `v` differs from the user's current version is refused with `401 token-stale`; the web interface renews it at once and gets a token with the new rights. A token without the claim (an account Lika has not written yet) is accepted, with the rights from Lika's database.
+- **When it is written**: when Lika creates or links the account, whenever an admin or manager changes the user's rights or status, and at sign-in or renewal if the token still carries an older `v`. Deleting the user in Lika removes it from the account; the account itself stays.
+
+### Custom claims of other applications
+
+Firebase replaces all the custom claims of an account at each update. Lika reads them first and only changes its own: claims written by other applications sharing the project are kept, and removed by nobody but them.
+
+Firebase limits all the custom claims of an account together to **1000 characters**. Lika's claim takes about 50 characters per domain: with other applications' claims, fewer domains fit. Granting more fails with *Too many domains for Firebase*; admins carry no domain list.
+
+### Choosing the claim name: `LIKA_CLAIM_NAME`
+
+The claim is named `lika` by default. If another application already uses a claim `lika`, give Lika another name:
+
+```bash
+LIKA_CLAIM_NAME=acme_lika
+```
+
+It replaces `lika` entirely (the custom claim takes that name). Letters, digits, `_` and `-` only: no dots, which Keycloak reads as nesting. The API refuses to start otherwise.
+
+Changing it on a running install: restart the API. Existing tokens no longer carry the claim: they are accepted, and the claim is written under its new name at the users' next sign-in or token renewal. The old `lika` custom claim stays on the accounts until something removes it.
 
 ## Requirements
 
@@ -74,6 +127,7 @@ LIKA_FIREBASE_SERVICE_ACCOUNT=<base64 of the key file>
 # Optional, Google sign-in
 LIKA_FIREBASE_GOOGLE_CLIENT_ID=1234567890-abc.apps.googleusercontent.com
 LIKA_FIREBASE_GOOGLE_CLIENT_SECRET=GOCSPX-...
+LIKA_CLAIM_NAME=lika                            # optional: name of the rights claim, see Claims
 
 LIKA_WEB_URL=https://lika.example.com
 LIKA_SETUP_TOKEN=<openssl rand -hex 24>         # optional
@@ -114,7 +168,7 @@ Someone invited who clicks **Sign in with Google** directly, without opening the
 
 ## Limits
 
-- **Custom claims**: 1000 characters. Granting a user too many domains fails with *Too many domains for Firebase*: make them admin, or give fewer domains.
+- **Custom claims**: 1000 characters for all of an account's custom claims, those of other applications included. Granting a user too many domains fails with *Too many domains for Firebase*: make them admin, or give fewer domains.
 - **Password policy**: Lika asks for 10 characters at least; a stricter Firebase password policy (*Settings › Password policy*) also applies.
 
 ## Troubleshooting
@@ -123,6 +177,7 @@ Someone invited who clicks **Sign in with Google** directly, without opening the
 |---|---|
 | API refuses to start: `LIKA_AUTH_PROVIDER=firebase needs …` | A variable of step 5 is missing. |
 | `Set both LIKA_FIREBASE_GOOGLE_CLIENT_ID and LIKA_FIREBASE_GOOGLE_CLIENT_SECRET, or neither` | Only one of them is set. |
+| `LIKA_CLAIM_NAME may only hold letters, digits, _ and -` | Remove dots and other characters from the claim name. |
 | `LIKA_FIREBASE_SERVICE_ACCOUNT is not a valid key` or `is neither JSON nor base64` | The value is not the base64 of the JSON key file, or was truncated. |
 | `Firebase: CONFIGURATION_NOT_FOUND` | Authentication is not started in the Firebase console (step 1). |
 | `Firebase: OPERATION_NOT_ALLOWED` | The Email/Password provider is not enabled. |

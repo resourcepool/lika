@@ -15,7 +15,14 @@ import java.time.Instant
 /**
  * HTTP and token helpers shared by the external identity providers.
  */
-open class ProviderSupport(protected val mapper: ObjectMapper, private val providerName: String) {
+open class ProviderSupport(protected val mapper: ObjectMapper, private val providerName: String, claimName: String) {
+
+    /** Claim carrying the rights in the tokens: `lika`, or LIKA_CLAIM_NAME */
+    protected val claimName: String = claimName.trim().ifEmpty { LikaClaims.CLAIM_NAME }
+
+    init {
+        check(CLAIM_NAME.matches(this.claimName)) { "LIKA_CLAIM_NAME may only hold letters, digits, _ and -: '$claimName'" }
+    }
 
     protected val http: RestClient = RestClient.builder().build()
 
@@ -55,7 +62,7 @@ open class ProviderSupport(protected val mapper: ObjectMapper, private val provi
     protected open fun onClientError(status: Int, body: JsonNode?) {}
 
     protected fun verified(jwt: Jwt): VerifiedToken {
-        val claim = jwt.getClaim<Any>(LikaClaims.CLAIM_NAME)
+        val claim = jwt.getClaim<Any>(claimName)
         val claims = when (claim) {
             is Map<*, *> -> IdentityProvider.fromClaimMap(claim)
             // Some mappers emit the JSON as a string
@@ -68,4 +75,9 @@ open class ProviderSupport(protected val mapper: ObjectMapper, private val provi
     }
 
     protected fun claimsJson(user: li.lika.common.models.User): String = mapper.writeValueAsString(IdentityProvider.toClaimMap(user.claims()))
+
+    companion object {
+        /** No dot: Keycloak mappers read dots in claim names as nesting */
+        private val CLAIM_NAME = Regex("[A-Za-z0-9_-]+")
+    }
 }

@@ -105,7 +105,7 @@ Two applications built from this repository: see [docs/DOKPLOY.md](docs/DOKPLOY.
 | `manager` | also invites users to the domain, sets their role there, and manages the API keys of the domain |
 | admin | everything: domains, users, keys, archives |
 
-Rights travel in the `lika` claim of the user's token, `{v, admin, domains}`. When an admin changes them, the version `v` changes and older tokens are refused until the web interface renews them, which it does by itself.
+Rights travel in the `lika` claim of the user's token, `{v, admin, domains}`, renamed with `LIKA_CLAIM_NAME` for Keycloak and Firebase. Lika's database stays the reference: the claim's `v` only tells outdated tokens apart. Details: [Keycloak](docs/auth/KEYCLOAK.md#claims), [Firebase](docs/auth/FIREBASE.md#claims). When an admin changes them, the version `v` changes and older tokens are refused until the web interface renews them, which it does by itself.
 
 API keys are for applications: `viewer` or `editor` per domain, or admin. A user API key (`lika_u_…`) acts with the live rights of its user, on `/mcp` only.
 

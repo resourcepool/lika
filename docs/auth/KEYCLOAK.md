@@ -8,9 +8,58 @@ Lika still keeps its users, invitations and rights. Nobody gets in without an in
 
 - **Sign-in**: "Sign in with *label*" in the web interface opens Keycloak, which sends the browser back to `<web URL>/auth/callback`. The web server exchanges the code through the API, which holds the client secret.
 - **Accounts**: Lika links a Keycloak account to a Lika user by its id, or the first time, by its **verified email**. When an invitation is accepted and no account has that email, Lika creates one in the realm with the password typed.
-- **Rights**: Lika writes them to the user attribute `lika`; a protocol mapper of the client puts it in the tokens as the `lika` claim. Lika declares the attribute (visible and editable by realm admins only) and creates the mapper itself on start.
+- **Rights**: Lika writes them to the user attribute `lika` (or `LIKA_CLAIM_NAME`); a protocol mapper of the client puts it in the tokens as the claim of the same name: see [Claims](#claims). Lika declares the attribute (visible and editable by realm admins only) and creates the mapper itself on start.
 - **Through the service account** of the client, Lika finds, creates and updates accounts, sets passwords and lists sessions. It never disables nor deletes Keycloak accounts: disabling or deleting a user in Lika only removes their access to Lika.
 - **Tokens** are only accepted when issued to Lika's client (`azp`) by the realm.
+
+## Claims
+
+### Standard claims Lika reads
+
+Lika checks the signature of Keycloak's access tokens with the realm's keys, then reads:
+
+| Claim | Used for |
+|---|---|
+| `iss` | must be the realm: `<LIKA_KEYCLOAK_URL>/realms/<realm>` |
+| `azp` | must be `LIKA_KEYCLOAK_CLIENT_ID`: tokens issued to other clients of the realm are refused |
+| `exp`, `iat`, `nbf` | validity |
+| `sub` | id of the Keycloak account, stored as the user's `externalId` |
+| `email`, `email_verified` | linking an account to a Lika user the first time, only when the email is verified |
+| `sid` | Keycloak session: *sign out everywhere*, a password reset or disabling the user refuse the sessions open at that time |
+
+`email` and `email_verified` come from the `email` client scope, `sid` from the `basic` one: both are default scopes of new clients.
+
+### The rights claim: ``lika``
+
+Lika writes the rights of each user to the user attribute `lika` of their Keycloak account, which the protocol mapper `lika rights` of Lika's client copies into the access token, ID token and userinfo as a JSON claim of the same name:
+
+```json
+"lika": { "v": 7, "admin": false, "domains": { "3f2a…": "editor", "9c1d…": "viewer" } }
+```
+
+| Field | Meaning |
+|---|---|
+| `v` | Version of the user's rights in Lika. It changes whenever their rights or status change, or their sessions are revoked. |
+| `admin` | `true` for admins, who have every right; their `domains` is then empty. |
+| `domains` | Role per domain id: `viewer`, `editor` or `manager`. |
+
+How Lika uses it:
+
+- **Lika's database stays the reference.** On every request, the rights applied are the ones Lika holds, not the ones in the token. The claim is there so that the token says who may do what, for Lika and for whoever reads it.
+- **`v` detects outdated tokens.** A token whose `v` differs from the user's current version is refused with `401 token-stale`; the web interface renews it at once and gets a token with the new rights. A token without the claim (an account Lika has not written yet) is accepted, with the rights from Lika's database.
+- **When it is written**: when Lika creates or links the account, whenever an admin or manager changes the user's rights or status, and at sign-in or renewal if the token still carries an older `v`. Deleting the user in Lika removes it from the account; the account itself stays.
+
+### Choosing the claim name: `LIKA_CLAIM_NAME`
+
+The claim is named `lika` by default. If another application already uses a claim `lika` or user attribute `lika`, give Lika another name:
+
+```bash
+LIKA_CLAIM_NAME=acme_lika
+```
+
+It replaces `lika` entirely (the user attribute and the claim both take that name; the mapper keeps the name `lika rights`). Letters, digits, `_` and `-` only: no dots, which Keycloak reads as nesting. The API refuses to start otherwise.
+
+Changing it on a running install: restart the API. It declares the new attribute in the user profile and updates the mapper `lika rights` to the new attribute and claim. Existing tokens no longer carry the claim: they are accepted, and the claim is written again under its new name at the users' next sign-in or token renewal. The old `lika` attribute stays on the accounts; remove it from the user profile once you no longer need it.
 
 ## Requirements
 
@@ -55,7 +104,7 @@ In the client, **Service accounts roles › Assign role › Filter by clients**,
 | `view-clients`, `query-clients`, `manage-clients` | find the client and add the `lika rights` protocol mapper |
 | `view-realm`, `manage-realm` | declare the `lika` attribute in the realm's user profile |
 
-The `manage-clients` and `manage-realm` roles are only needed for the setup Lika does on its first start. Once the logs show it done (step 5), you may remove them, as long as the attribute and the mapper are left in place.
+The `manage-clients` and `manage-realm` roles are only needed for the setup Lika does on start: on the first start, and after changing `LIKA_CLAIM_NAME`. Once the logs show it done (step 5), you may remove them, as long as the attribute and the mapper are left in place; give them back before changing the claim name.
 
 ## 4. Configure Lika
 
@@ -68,6 +117,7 @@ LIKA_KEYCLOAK_REALM=lika
 LIKA_KEYCLOAK_CLIENT_ID=lika
 LIKA_KEYCLOAK_CLIENT_SECRET=<client secret>
 LIKA_KEYCLOAK_LABEL=Example SSO                 # button "Sign in with Example SSO"; default Keycloak
+LIKA_CLAIM_NAME=lika                            # optional: name of the rights claim and attribute, see Claims
 
 LIKA_WEB_URL=https://lika.example.com
 LIKA_SETUP_TOKEN=<openssl rand -hex 24>         # optional
@@ -90,7 +140,7 @@ Start the API. Its logs show, the first time:
 
 ```
 Declared the attribute lika in the user profile of realm lika
-Created the protocol mapper lika rights on client lika
+Created the protocol mapper lika rights on client lika, claim lika
 ```
 
 If Keycloak is not reachable yet, the API starts anyway (`Keycloak is not ready yet (...); setup will be retried on first use`) and does the setup on the first sign-in. Check in Keycloak:
@@ -125,12 +175,13 @@ Someone invited who signs in with Keycloak directly, without opening the invitat
 | Symptom | Cause |
 |---|---|
 | API refuses to start: `LIKA_AUTH_PROVIDER=keycloak needs LIKA_KEYCLOAK_…` | A variable of step 4 is missing. |
+| `LIKA_CLAIM_NAME may only hold letters, digits, _ and -` | Remove dots and other characters from the claim name. |
 | `Keycloak client lika not found in realm lika` | Wrong `LIKA_KEYCLOAK_CLIENT_ID`, or the service account lacks `view-clients`/`query-clients`. |
 | `403` from Keycloak in the API logs | A role of step 3 is missing. |
 | Keycloak shows *Invalid parameter: redirect_uri* | The redirect URI is not `<web URL>/auth/callback` exactly: check *Valid redirect URIs*, and the forwarded headers of the reverse proxy. |
 | *This account has no access to Lika: ask an admin for an invitation* | No Lika user has this email, or the email is not verified in Keycloak. |
 | `unauthorized_client` on sign-in | *Client authentication* is off, or the secret is wrong. |
-| Rights changes are not applied | The `lika rights` mapper was removed or edited: delete it and restart the API to recreate it. |
+| Tokens carry no rights claim | The `lika rights` mapper was removed, or the attribute is missing from the user profile: restart the API, which recreates them. |
 
 ## Development
 

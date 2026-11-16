@@ -64,7 +64,11 @@ Whoever reaches the origin directly can pick the domain with this header. They o
 
 Step-by-step install guides: [local](auth/LOCAL.md), [Keycloak](auth/KEYCLOAK.md), [Firebase](auth/FIREBASE.md).
 
-Whatever the provider, Lika keeps its users, invitations, rights and API keys. Rights are written to the provider as the `lika` claim of the users' tokens. Lika never disables or deletes accounts at the provider, because other applications may use them. A user who is disabled or removed in Lika only loses access to Lika.
+Whatever the provider, Lika keeps its users, invitations, rights and API keys. Rights are written to the provider as the `lika` claim of the users' tokens.
+
+| Variable | Default | Description |
+|---|---|---|
+| `LIKA_CLAIM_NAME` | `lika` | Keycloak and Firebase: name of the claim carrying the rights, and of the Keycloak user attribute, e.g. `acme_lika` when another application already uses `lika`. Letters, digits, `_` and `-`. Claims read and written: [Keycloak](auth/KEYCLOAK.md#claims), [Firebase](auth/FIREBASE.md#claims). | Lika never disables or deletes accounts at the provider, because other applications may use them. A user who is disabled or removed in Lika only loses access to Lika.
 
 #### Local
 
@@ -102,7 +106,7 @@ Users who already have an account in the realm, possibly through LDAP or another
 | `LIKA_FIREBASE_GOOGLE_CLIENT_ID`, `LIKA_FIREBASE_GOOGLE_CLIENT_SECRET` | Optional: enables "Sign in with Google". The OAuth web client of the Google provider of Firebase (*Authentication › Sign-in method › Google › Web SDK configuration*), with the redirect URI `<LIKA web URL>/auth/callback` added in Google Cloud. |
 | `FIREBASE_AUTH_EMULATOR_HOST` | `host:port` of the Auth emulator, for development and tests only: its tokens are not signed. |
 
-The *Email/Password* provider must be enabled in Firebase. Rights are written as the custom claim `lika`. Firebase limits custom claims to 1000 characters, about 15 to 20 domains per user; admins need none.
+The *Email/Password* provider must be enabled in Firebase. Rights are written as the custom claim `lika` (or `LIKA_CLAIM_NAME`); the custom claims of other applications are kept. Firebase limits all custom claims of an account to 1000 characters, about 15 to 20 domains per user; admins need none.
 
 Google accounts are linked to their invitation by their verified email. Without Mailjet, Firebase emails password reset links itself.
 

@@ -1,6 +1,7 @@
 package li.lika.core.props
 
 import li.lika.common.models.AuthProviderType
+import li.lika.common.models.LikaClaims
 import org.springframework.boot.context.properties.ConfigurationProperties
 import java.time.Duration
 
@@ -14,6 +15,12 @@ class AuthProperties {
     var webUrl: String = "http://localhost:3000"
     /** Fixed setup token, instead of a random one printed in the logs (LIKA_SETUP_TOKEN). For automated installs. */
     var setupToken: String? = null
+    /**
+     * Name of the claim carrying the rights in the tokens of Keycloak and Firebase, and of the Keycloak user attribute
+     * (LIKA_CLAIM_NAME), e.g. `acme_lika`: avoids a clash with a claim `lika` written by another application.
+     * Letters, digits, `_` and `-` only. Ignored by the local provider, whose tokens are Lika's own.
+     */
+    var claimName: String = LikaClaims.CLAIM_NAME
     var keycloak = Keycloak()
     var firebase = Firebase()
     var accessTokenTtl: Duration = Duration.ofMinutes(15)

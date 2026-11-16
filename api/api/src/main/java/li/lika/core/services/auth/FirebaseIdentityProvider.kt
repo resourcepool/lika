@@ -27,11 +27,12 @@ import java.util.Date
 
 /**
  * Users sign in with Firebase Authentication: email and password typed in Lika, and Google when its OAuth client
- * is configured. Rights are written as the custom claim `lika`, through the Identity Toolkit API with a service account.
+ * is configured. Rights are written as the custom claim `lika` (or LIKA_CLAIM_NAME), through the Identity Toolkit
+ * API with a service account. The other custom claims of the account, written by other applications, are kept.
  */
 @Component
 @ConditionalOnProperty(name = ["lika.auth.provider"], havingValue = "firebase")
-class FirebaseIdentityProvider(props: AuthProperties, mapper: ObjectMapper) : ProviderSupport(mapper, "Firebase"), IdentityProvider {
+class FirebaseIdentityProvider(props: AuthProperties, mapper: ObjectMapper) : ProviderSupport(mapper, "Firebase", props.claimName), IdentityProvider {
     private val logger = KotlinLogging.logger {}
     private val fb = props.firebase
 
@@ -152,15 +153,27 @@ class FirebaseIdentityProvider(props: AuthProperties, mapper: ObjectMapper) : Pr
 
     override fun pushClaims(user: User) {
         val id = user.externalId ?: return
-        val claims = mapper.writeValueAsString(mapOf("lika" to IdentityProvider.toClaimMap(user.claims())))
-        if (claims.length > CUSTOM_CLAIMS_LIMIT) {
-            throw IllegalArgumentException("Too many domains for Firebase: custom claims are limited to $CUSTOM_CLAIMS_LIMIT characters. Make the user admin, or give fewer domains.")
+        val claims = customClaims(id)
+        claims.set<JsonNode>(claimName, mapper.valueToTree(IdentityProvider.toClaimMap(user.claims())))
+        val json = mapper.writeValueAsString(claims)
+        if (json.length > CUSTOM_CLAIMS_LIMIT) {
+            throw IllegalArgumentException("Too many domains for Firebase: custom claims are limited to $CUSTOM_CLAIMS_LIMIT characters, those of other applications included. Make the user admin, or give fewer domains.")
         }
-        admin("accounts:update", mapOf("localId" to id, "customAttributes" to claims))
+        admin("accounts:update", mapOf("localId" to id, "customAttributes" to json))
     }
 
     override fun clearClaims(externalId: String) {
-        admin("accounts:update", mapOf("localId" to externalId, "customAttributes" to "{}"))
+        val claims = customClaims(externalId)
+        if (claims.remove(claimName) != null) {
+            admin("accounts:update", mapOf("localId" to externalId, "customAttributes" to mapper.writeValueAsString(claims)))
+        }
+    }
+
+    /** Custom claims of the account: Firebase replaces them all on update, so the ones of other applications are read first */
+    private fun customClaims(externalId: String): com.fasterxml.jackson.databind.node.ObjectNode {
+        val user = admin("accounts:lookup", mapOf("localId" to listOf(externalId))).path("users").firstOrNull()
+        val raw = user?.path("customAttributes")?.asText()?.takeIf { it.isNotBlank() } ?: return mapper.createObjectNode()
+        return runCatching { mapper.readTree(raw) as? com.fasterxml.jackson.databind.node.ObjectNode }.getOrNull() ?: mapper.createObjectNode()
     }
 
     /** Firebase sends its own reset email, when Lika cannot send one */
