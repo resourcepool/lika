@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { ArrowLeftRight, Globe, KeyRound, Link2, LogOut, Users } from "lucide-react"
+import { ArrowLeftRight, ChartColumn, Globe, KeyRound, Link2, LogOut, Users } from "lucide-react"
 import { signOut } from "@/app/actions"
 import { Logo } from "@/components/app/logo"
 import { ThemeToggle } from "@/components/app/theme-toggle"
@@ -20,7 +20,10 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
-const workspace = [{ href: "/links", label: "Links", icon: Link2 }]
+const workspace = [
+  { href: "/links", label: "Links", icon: Link2 },
+  { href: "/engagement", label: "Engagement", icon: ChartColumn },
+]
 
 const manage = [
   { href: "/users", label: "Users", icon: Users },

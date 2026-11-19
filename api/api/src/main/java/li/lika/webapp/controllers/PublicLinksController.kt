@@ -11,6 +11,7 @@ import li.lika.common.models.currentTargetUrl
 import li.lika.common.models.isPasswordProtected
 import li.lika.core.services.DomainService
 import li.lika.core.services.DeeplinkService
+import li.lika.core.services.EngagementService
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.GetMapping
@@ -26,6 +27,7 @@ import org.springframework.web.servlet.ModelAndView
 class PublicLinksController(
         private val domainService: DomainService,
         private val deeplinkService: DeeplinkService,
+        private val engagement: EngagementService,
         private val requestHost: RequestHost) {
     private val logger = org.slf4j.LoggerFactory.getLogger(PublicLinksController::class.java)
 
@@ -44,6 +46,8 @@ class PublicLinksController(
         }
 
         val pl = findResolvable(host, rootDeeplink)
+        // A visit, whether the link redirects, asks for its password or goes through the landing page
+        engagement.record(pl)
         if (pl.type == DeeplinkType.SIMPLE) {
             if (pl.isPasswordProtected()) {
                 return protectedPage(pl, false)

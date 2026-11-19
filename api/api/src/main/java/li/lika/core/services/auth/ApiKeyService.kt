@@ -25,6 +25,8 @@ class ApiKeyService(
     companion object {
         const val KEYS_CACHE = "apikeys"
         private val TOUCH_EVERY: Duration = Duration.ofMinutes(10)
+        const val MAX_USER_KEYS = 20
+        const val MAX_NAME_LENGTH = 60
     }
 
     private val lastTouched = ConcurrentHashMap<String, Instant>()
@@ -103,18 +105,24 @@ class ApiKeyService(
 
     // --- User API keys
 
-    fun findUserKey(userId: String): ApiKey? = keyDao.findByUserId(userId)
+    fun userKeys(userId: String): List<ApiKey> = keyDao.findAllByUserId(userId).sortedBy { it.createdAt }
 
     /**
-     * Creates the user API key of the caller, replacing the previous one: its secret stops working.
+     * Creates a user API key of the caller for the application named [name]. Each application has its own,
+     * to tell them apart and revoke one without disconnecting the others.
      */
-    fun createUserKey(user: LikaPrincipal.UserPrincipal): ApiKeySecret {
-        deleteUserKey(user.id)
+    fun createUserKey(user: LikaPrincipal.UserPrincipal, name: String): ApiKeySecret {
+        val application = name.trim()
+        require(application.isNotEmpty()) { "Name the key after the application using it, e.g. Claude Desktop" }
+        require(application.length <= MAX_NAME_LENGTH) { "At most $MAX_NAME_LENGTH characters for the application name" }
+        val existing = keyDao.findAllByUserId(user.id)
+        require(existing.none { it.name.equals(application, ignoreCase = true) }) { "You already have a key for $application: revoke it first, or choose another name" }
+        require(existing.size < MAX_USER_KEYS) { "At most $MAX_USER_KEYS user API keys: revoke one you no longer use" }
         val secret = Secrets.newUserKeySecret()
         val key = keyDao.save(
             ApiKey(
                 id = UUID.randomUUID().toString(),
-                name = "User key of ${user.email}",
+                name = application,
                 secretHash = Secrets.sha256(secret),
                 prefix = Secrets.displayPrefix(secret),
                 createdBy = user.id,
@@ -124,12 +132,20 @@ class ApiKeyService(
         return ApiKeySecret(key, secret)
     }
 
-    /** @return whether the user had a key */
-    fun deleteUserKey(userId: String): Boolean {
-        val key = keyDao.findByUserId(userId) ?: return false
+    fun deleteUserKey(userId: String, id: String) {
+        val key = keyDao.findById(id)?.takeIf { it.userId == userId } ?: throw ApiKeyNotFoundException()
         keyDao.deleteOne(key.id)
         evict(key)
-        return true
+    }
+
+    /** @return how many keys the user had */
+    fun deleteUserKeys(userId: String): Int {
+        val keys = keyDao.findAllByUserId(userId)
+        keys.forEach {
+            keyDao.deleteOne(it.id)
+            evict(it)
+        }
+        return keys.size
     }
 
     /** Called when a domain is deleted. A key left without any domain is deleted too. */

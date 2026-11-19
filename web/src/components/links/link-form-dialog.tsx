@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { api, ApiError } from "@/lib/client"
 import { emptyLinkForm, formToLinkInput, linkFormSchema, linkToForm, type LinkFormValues } from "@/lib/link-form"
 import type { Domain, Link } from "@/lib/types"
+import { ExpiryPicker } from "@/components/links/expiry-picker"
 import { MetadataEditor } from "@/components/links/metadata-editor"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -64,9 +65,9 @@ export function LinkFormDialog({ open, onOpenChange, domains, defaultDomainId, l
     },
   })
 
-  const [domainId, slug, passwordMode, scheduled, expires] = useWatch({
+  const [domainId, slug, passwordMode, scheduled, expires, expiryPreset, expiryDate] = useWatch({
     control,
-    name: ["domainId", "slug", "passwordMode", "scheduled", "expires"],
+    name: ["domainId", "slug", "passwordMode", "scheduled", "expires", "expiryPreset", "expiryDate"],
   })
   const domain = domains.find((d) => d.id === domainId)
   const slugCheck = useSlugAvailability(editing ? "" : slug, domainId)
@@ -194,12 +195,19 @@ export function LinkFormDialog({ open, onOpenChange, domains, defaultDomainId, l
 
           <Section
             title="Expiry"
-            description="The link stops working after this day, and is deleted the next night."
+            description="The link stops working after its last day, and is deleted the next night."
             toggle={<Controller control={control} name="expires" render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} aria-label="Expiry" />} />}
           >
             {expires && (
-              <Field label="Last day" htmlFor="expiryDate" error={errors.expiryDate?.message}>
-                <Input id="expiryDate" type="date" className="w-48 font-mono text-sm" {...register("expiryDate")} />
+              <Field label="Expires" htmlFor="expiryPreset" error={errors.expiryDate?.message}>
+                <ExpiryPicker
+                  id="expiryPreset"
+                  value={{ preset: expiryPreset, date: expiryDate }}
+                  onChange={(choice) => {
+                    setValue("expiryPreset", choice.preset, { shouldDirty: true })
+                    setValue("expiryDate", choice.date, { shouldDirty: true, shouldValidate: formState.isSubmitted })
+                  }}
+                />
               </Field>
             )}
           </Section>

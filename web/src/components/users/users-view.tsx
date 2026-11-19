@@ -77,7 +77,7 @@ export function UsersView() {
       action === "delete"
         ? api(`/api/users/${user.id}`, { method: "DELETE" })
         : action === "revokeKey"
-          ? api(`/api/users/${user.id}/api-key`, { method: "DELETE" })
+          ? api(`/api/users/${user.id}/api-keys`, { method: "DELETE" })
           : api(`/api/users/${user.id}/${action === "revoke" ? "sessions/revoke" : action}`, { method: "POST" }),
     onSuccess: (_, { user, action }) => {
       refresh()
@@ -87,7 +87,7 @@ export function UsersView() {
         enable: "enabled",
         delete: user.status === "invited" ? "invitation withdrawn" : "deleted",
         revoke: "signed out everywhere",
-        revokeKey: "user API key revoked",
+        revokeKey: "user API keys revoked",
       }
       toast.success(`${user.name}: ${done[action]}`)
     },
@@ -193,7 +193,7 @@ export function UsersView() {
                                 </DropdownMenuItem>
                               )}
                               <DropdownMenuItem onSelect={() => setConfirming({ user, action: "revokeKey" })}>
-                                <Bot /> Revoke user API key
+                                <Bot /> Revoke user API keys
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               {user.status === "disabled" ? (
@@ -294,7 +294,7 @@ function confirmTitle(c?: Confirmation): string {
     enable: `Enable ${name}?`,
     delete: c.user.status === "invited" ? `Withdraw the invitation of ${name}?` : `Delete ${name}?`,
     revoke: `Sign ${name} out everywhere?`,
-    revokeKey: `Revoke the user API key of ${name}?`,
+    revokeKey: `Revoke the user API keys of ${name}?`,
   }[c.action]
 }
 

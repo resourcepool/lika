@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { DEFAULT_EXPIRY_PRESET, expiryDateOf } from "@/lib/expiry"
 import { fromDateTimeLocal, toDateTimeLocal } from "@/lib/link-status"
 import type { Link, LinkInput } from "@/lib/types"
 
@@ -16,6 +17,8 @@ export const linkFormSchema = z
     activationInstant: z.string(),
     targetUrlBeforeActivation: z.union([z.literal(""), z.url({ message: "Enter a full URL" })]),
     expires: z.boolean(),
+    /** A delay from today, or "custom" for expiryDate */
+    expiryPreset: z.enum(["7d", "30d", "3m", "custom"]),
     expiryDate: z.string(),
     metadata: z.array(z.object({ key: z.string(), value: z.string() })),
   })
@@ -26,7 +29,7 @@ export const linkFormSchema = z
     if (v.scheduled && !v.activationInstant) {
       ctx.addIssue({ code: "custom", path: ["activationInstant"], message: "Choose when the link activates" })
     }
-    if (v.expires && !v.expiryDate) {
+    if (v.expires && v.expiryPreset === "custom" && !v.expiryDate) {
       ctx.addIssue({ code: "custom", path: ["expiryDate"], message: "Choose the last day of the link" })
     }
   })
@@ -44,6 +47,7 @@ export function emptyLinkForm(domainId: string): LinkFormValues {
     activationInstant: "",
     targetUrlBeforeActivation: "",
     expires: false,
+    expiryPreset: DEFAULT_EXPIRY_PRESET,
     expiryDate: "",
     metadata: [],
   }
@@ -61,6 +65,8 @@ export function linkToForm(link: Link, domainId: string): LinkFormValues {
     activationInstant: toDateTimeLocal(activation?.activationInstant),
     targetUrlBeforeActivation: activation?.targetUrlBeforeActivation ?? "",
     expires: !!link.options.expiry?.expiryDate,
+    // An existing expiry is a date: delays count from the day they are chosen
+    expiryPreset: link.options.expiry?.expiryDate ? "custom" : DEFAULT_EXPIRY_PRESET,
     expiryDate: link.options.expiry?.expiryDate ?? "",
     metadata: Object.entries(link.metadata ?? {}).map(([key, value]) => ({ key, value })),
   }
@@ -71,7 +77,7 @@ export function linkToForm(link: Link, domainId: string): LinkFormValues {
  * omitting it keeps the current one. Fields the form does not show
  * (type, landing template) are kept from the existing link.
  */
-export function formToLinkInput(values: LinkFormValues, existing?: Link): LinkInput {
+export function formToLinkInput(values: LinkFormValues, existing?: Link, today: Date = new Date()): LinkInput {
   const options: LinkInput["options"] = {}
   if (existing?.options.landing?.templateId) {
     options.landing = { templateId: existing.options.landing.templateId }
@@ -83,7 +89,7 @@ export function formToLinkInput(values: LinkFormValues, existing?: Link): LinkIn
     }
   }
   if (values.expires) {
-    options.expiry = { expiryDate: values.expiryDate }
+    options.expiry = { expiryDate: expiryDateOf({ preset: values.expiryPreset, date: values.expiryDate }, today) }
   }
   if (values.passwordMode === "set") {
     options.password = { password: values.password }

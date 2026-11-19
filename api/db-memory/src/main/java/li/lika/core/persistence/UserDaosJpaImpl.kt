@@ -51,7 +51,7 @@ class ApiKeyDaoJpaImpl(private val repository: ApiKeyRepository) : ApiKeyDao {
     override fun findAll(): List<ApiKey> = repository.findAll().map { it.toDomain() }
     override fun findById(id: String): ApiKey? = repository.findById(id).getOrNull()?.toDomain()
     override fun findBySecretHash(secretHash: String): ApiKey? = repository.findFirstBySecretHash(secretHash)?.toDomain()
-    override fun findByUserId(userId: String): ApiKey? = repository.findFirstByUserId(userId)?.toDomain()
+    override fun findAllByUserId(userId: String): List<ApiKey> = repository.findAllByUserId(userId).map { it.toDomain() }
     override fun save(k: ApiKey): ApiKey = repository.save(k.toDb()).toDomain()
     override fun deleteOne(id: String) = repository.deleteById(id)
     override fun deleteAll() = repository.deleteAll()

@@ -42,6 +42,7 @@ Prefer a dedicated header. Reverse proxies such as Traefik (Dokploy) replace `X-
     }
     ```
   - Redirects are sent with `Cache-Control: no-store`: with a minimum TTL of 0, every visit reaches Lika, so expiry, activation and edits apply at once. With the managed policy *CachingOptimized*, redirects are cached for its minimum TTL of 1 second.
+  - [Engagement](../UPGRADING.md#016x--0170) counts the visits which reach Lika: a redirect served from the cache of the CDN is not counted.
   - Allow the `POST` method in the cache behavior: the password form of protected links posts to the short URL.
 
 To see why a link is not found, with the domain looked up and the headers it came from, set `LOGGING_LEVEL_LI_LIKA_NOTFOUND=DEBUG`:

@@ -1,5 +1,12 @@
 # Upgrading Lika
 
+## 0.16.x → 0.17.0
+
+- **Several user API keys per person**, one per application (Claude Desktop, Cursor…), each with its own name and last use: revoke one without disconnecting the others, in **Profile › AI assistants**. Existing keys keep working. The API changes with it: `GET` and `POST /api/me/api-keys` (`{"name": "Claude Desktop"}`) and `DELETE /api/me/api-keys/{id}` replace `POST` and `DELETE /api/me/api-key`; `GET /api/me` returns `apiKeys`, a list, instead of `apiKey`; `DELETE /api/users/{id}/api-keys` revokes them all (the former path still works). PostgreSQL: the constraint allowing one key per user is dropped at startup.
+- **Engagement**: Lika counts the visits of each short link, from this version on. The new **Engagement** page shows them per domain and per link, live over the last 24 hours, or over 7 days, 30 days, 13 weeks and 12 months (`GET /api/engagement?range=24h|7d|30d|90d|12m`, with `domainId` or `linkId`), for anyone reading the domain. Visits are kept per hour for 24 hours, per day until the end of the following month, then per week, and deleted after a year. Days and weeks are in UTC. They are not part of the archive. Behind a CDN caching redirects, visits served by the CDN are not counted: see [Behind a CDN](docs/CONFIGURATION.md#behind-a-cdn).
+- **Clean up**: on the Links page, lists the links created over a year ago which nobody visited for a year, to delete the ones no longer needed (`GET /api/links/unused`). Until Lika has counted visits for a year, it lists the links without visit since it started counting, and says so.
+- The expiry of a link is chosen in a list, in the link form and for several links at once: in 7 days, 30 days, 3 months, or a custom date. The API is unchanged: it still takes a date.
+
 ## 0.15.x → 0.16.0
 
 - Claude takes skills from plugins, not from MCP servers: **Profile › AI assistants › Download plugin** generates a Claude plugin with the skills for your rights and the MCP server as connector (`GET /api/me/claude-plugin`). See [docs/MCP.md](docs/MCP.md#claude-plugin).

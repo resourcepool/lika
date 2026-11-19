@@ -52,10 +52,10 @@ class UsersController(private val users: UserService) {
     @PostMapping("/{id}/sessions/revoke")
     fun revokeSessions(@AuthenticationPrincipal p: LikaPrincipal, @PathVariable id: String): User = users.revokeSessions(p, id)
 
-    /** Admin only: revokes the user API key of the user */
-    @DeleteMapping("/{id}/api-key")
+    /** Admin only: revokes every user API key of the user. /api-key is the path of Lika < 0.17. */
+    @DeleteMapping("/{id}/api-keys", "/{id}/api-key")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    fun revokeApiKey(@AuthenticationPrincipal p: LikaPrincipal, @PathVariable id: String) = users.revokeUserKey(p, id)
+    fun revokeApiKeys(@AuthenticationPrincipal p: LikaPrincipal, @PathVariable id: String) = users.revokeUserKeys(p, id)
 
     /** Admins delete anyone but the last admin. Managers withdraw pending invitations to their domains. */
     @DeleteMapping("/{id}")

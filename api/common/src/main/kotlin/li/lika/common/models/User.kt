@@ -73,11 +73,12 @@ data class UserToken(
 
 /**
  * Credentials of an application, which belong to no user and outlive the person who created them,
- * or the user API key of a person ([userId] set): unique per user, acting with the user's current rights,
- * and only accepted by the MCP server.
+ * or a user API key of a person ([userId] set): one per application they connect, acting with the user's
+ * current rights, and only accepted by the MCP server.
  */
 data class ApiKey(
     val id: String,
+    /** The application using the key */
     val name: String,
     /** Every right, like an admin user. Only admins create such keys. */
     val admin: Boolean = false,

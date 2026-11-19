@@ -8,6 +8,7 @@ import li.lika.common.models.DomainCreator
 import li.lika.common.models.DomainUpdate
 import li.lika.common.persistence.DeeplinkDao
 import li.lika.common.persistence.DomainDao
+import li.lika.common.persistence.EngagementDao
 import li.lika.core.props.LikaProperties
 import li.lika.common.security.LikaPrincipal
 import li.lika.core.services.auth.ApiKeyService
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional
 class DomainService(
     private val domainDao: DomainDao,
     private val deeplinkDao: DeeplinkDao,
+    private val engagementDao: EngagementDao,
     private val authorization: AuthorizationService,
     private val users: UserService,
     private val keys: ApiKeyService,
@@ -85,7 +87,7 @@ class DomainService(
 
     /**
      * Refuses to delete a domain that still has links, unless [force] is set, in which case its links are deleted too.
-     * Roles of users and keys on the domain are always removed.
+     * Roles of users and keys on the domain, and the visits counted for it, are always removed.
      */
     @Transactional
     @CacheEvict(cacheNames = ["domains", "deeplinks"], allEntries = true)
@@ -98,6 +100,7 @@ class DomainService(
         if (linkCount > 0) {
             deeplinkDao.deleteAllForHost(domain.host)
         }
+        engagementDao.deleteAllForHost(domain.host)
         users.removeDomain(id)
         keys.removeDomain(id)
         domainDao.deleteOne(id)

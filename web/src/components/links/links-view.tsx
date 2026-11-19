@@ -1,16 +1,16 @@
 "use client"
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useEffect, useMemo, useState } from "react"
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { createColumnHelper, tableFeatures, useTable } from "@tanstack/react-table"
 import { formatDistanceToNowStrict } from "date-fns"
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ChevronsUpDown, ExternalLink, Link2, MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react"
+import { ArrowDown, ArrowUp, BrushCleaning, ChevronLeft, ChevronRight, ChevronsUpDown, ExternalLink, Link2, MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react"
 import { toast } from "sonner"
-import { api, withQuery } from "@/lib/client"
+import { api } from "@/lib/client"
 import { metadataParams, type MetadataFilter } from "@/lib/link-batch"
 import type { Link, MetadataKeyValues, Page, SortDirection, SortProperty } from "@/lib/types"
 import { useDomains } from "@/hooks/use-lika"
+import { useDomainSelection } from "@/hooks/use-domain-selection"
 import { PageHeader } from "@/components/app/page-header"
 import { CopyButton } from "@/components/app/copy-button"
 import { ALL_DOMAINS, DomainSwitcher } from "@/components/links/domain-switcher"
@@ -19,6 +19,7 @@ import { LinkFormDialog } from "@/components/links/link-form-dialog"
 import { LinkDetailsSheet } from "@/components/links/link-details-sheet"
 import { MetadataFilterBar } from "@/components/links/metadata-filter-bar"
 import { LinkBatchBar } from "@/components/links/link-batch-bar"
+import { LinkCleanupDialog } from "@/components/links/link-cleanup-dialog"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ConfirmDialog } from "@/components/app/confirm-dialog"
 import { EmptyState } from "@/components/app/empty-state"
@@ -36,27 +37,14 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 const PAGE_SIZES = [20, 50]
-const DOMAIN_STORAGE_KEY = "lika.domain"
 
 type Sort = { by: SortProperty; direction: SortDirection }
 
 const features = tableFeatures({})
 
-// The last chosen domain only changes through selectDomain, which also updates the URL
-const subscribeToNothing = () => () => {}
-function readStoredDomain(): string | null {
-  try {
-    return localStorage.getItem(DOMAIN_STORAGE_KEY)
-  } catch {
-    return null
-  }
-}
 const helper = createColumnHelper<typeof features, Link>()
 
 export function LinksView() {
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
   const queryClient = useQueryClient()
   const domains = useDomains()
 
@@ -64,17 +52,11 @@ export function LinksView() {
   const [pageIndex, setPageIndex] = useState(0)
   const [pageSize, setPageSize] = useState(PAGE_SIZES[0])
 
-  const domainParam = searchParams.get("domain")
-  const storedDomain = useSyncExternalStore(subscribeToNothing, readStoredDomain, () => null)
-  const known = (id: string | null) => !!id && (id === ALL_DOMAINS || !!domains.data?.some((d) => d.id === id))
-  const domainId = known(domainParam) ? domainParam! : known(storedDomain) ? storedDomain! : ALL_DOMAINS
-
+  const selection = useDomainSelection(domains.data)
+  const domainId = selection.domainId
   function selectDomain(id: string) {
-    try {
-      localStorage.setItem(DOMAIN_STORAGE_KEY, id)
-    } catch {}
     setPageIndex(0)
-    router.replace(withQuery(pathname, { domain: id === ALL_DOMAINS ? undefined : id }))
+    selection.selectDomain(id)
   }
 
   const [search, setSearch] = useState("")
@@ -138,6 +120,7 @@ export function LinksView() {
   const [editing, setEditing] = useState<Link | undefined>()
   const [details, setDetails] = useState<Link | undefined>()
   const [deleting, setDeleting] = useState<Link | undefined>()
+  const [cleaning, setCleaning] = useState(false)
 
   const remove = useMutation({
     mutationFn: (link: Link) => api(`/api/links/${link.id}`, { method: "DELETE" }),
@@ -235,6 +218,10 @@ export function LinksView() {
     <>
       <PageHeader title="Links" description={total ? `${total} link${total > 1 ? "s" : ""}` : "Short links of your domains"}>
         {domains.data && domains.data.length > 0 && <DomainSwitcher domains={domains.data} value={domainId} onChange={selectDomain} />}
+        <Button variant="outline" onClick={() => setCleaning(true)} disabled={!domains.data?.length}>
+          <BrushCleaning />
+          Clean up
+        </Button>
         <Button onClick={openCreate} disabled={!domains.data?.length}>
           <Plus />
           New link
@@ -359,6 +346,7 @@ export function LinksView() {
           link={editing}
         />
       )}
+      {domains.data && cleaning && <LinkCleanupDialog onOpenChange={setCleaning} domains={domains.data} domainId={domainId === ALL_DOMAINS ? undefined : domainId} />}
       <LinkDetailsSheet link={details} onOpenChange={(open) => !open && setDetails(undefined)} onEdit={openEdit} />
       <ConfirmDialog
         open={!!deleting}

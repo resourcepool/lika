@@ -65,7 +65,8 @@ npm run build       # Standalone server in .next/standalone
 - **Database Abstraction**: DAO pattern with multiple backend support (H2/SQLite/PostgreSQL/MongoDB); `db-memory`, `db-sqlite` and `db-postgres` share the same JPA entities
 - **Core Models**: `Deeplink`, `Domain`, `User`, `ApiKey` with support for advanced features like activation scheduling and expiry dates
 - **Users and access**: users sign in through the identity provider chosen by `LIKA_AUTH_PROVIDER` (`local`, `keycloak`, `firebase`: `IdentityProvider` implementations in `api/.../core/services/auth`, one bean per value). Lika keeps users, invitations and rights in all cases; external accounts are linked by `externalId` or verified email, and only the `lika` claim is written to the provider; rights are the `lika` claim `{v, admin, domains: {domainId: viewer|editor|manager}}` of their token. API keys are for applications (viewer/editor per domain, or admin). Every check goes through `AuthorizationService`; `CredentialsService` resolves a bearer (JWT → user, else key secret). A token whose `v` differs from the user's version is refused (`token-stale`).
-- **MCP server**: `POST /mcp`, stateless Streamable HTTP implemented by hand (`core/services/mcp`: `McpServer` JSON-RPC, `McpTools` filtered per caller, `McpSkills` generated per caller as `skill://<name>/SKILL.md` resources, served with `skills/list`/`skills/get` of the Skills over MCP extension). User API keys (`ApiKey.userId`, `lika_u_…`) act with their user's live rights, `/mcp` only (`role_mcp`). Integration doc: `docs/MCP.md`.
+- **MCP server**: `POST /mcp`, stateless Streamable HTTP implemented by hand (`core/services/mcp`: `McpServer` JSON-RPC, `McpTools` filtered per caller, `McpSkills` generated per caller as `skill://<name>/SKILL.md` resources, served with `skills/list`/`skills/get` of the Skills over MCP extension). User API keys (`ApiKey.userId`, `lika_u_…`, several per user, one per application) act with their user's live rights, `/mcp` only (`role_mcp`). Integration doc: `docs/MCP.md`.
+- **Engagement**: `EngagementService` counts the visits of public links (buffered, flushed every 10 s) in `EngagementDao` buckets per link and period (UTC), and consolidates them nightly: per hour for 24 hours, per day until the end of the following month, per week up to a year. Reports (`GET /api/engagement`) re-bucket whatever is stored. `GET /api/links/unused` lists links without visit for a year.
 - **Spring Security**: one filter authenticating user tokens and API keys (`security` module), coarse URL rules in `SecurityConfig`, per-domain rules in the services
 - **Caching**: Caffeine cache integration for performance optimization
 
@@ -75,6 +76,7 @@ npm run build       # Standalone server in .next/standalone
 - **Runtime configuration**: `LIKA_API_URL` and `LIKA_SESSION_SECRET` are read at startup (`src/lib/env.ts`, checked in `src/instrumentation.ts`)
 - **Key Routes**:
   - `/links`: link management, filtered by domain
+  - `/engagement`: visits per domain and per link (`?link=<id>`)
   - `/users`, `/keys`: admins and domain managers (`src/app/(app)/(manage)/layout.tsx`)
   - `/admin/domains`, `/admin/archive`: admin only (`src/app/(app)/admin/layout.tsx`)
   - `/profile`: the signed-in user

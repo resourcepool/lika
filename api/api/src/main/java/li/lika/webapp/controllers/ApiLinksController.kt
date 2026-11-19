@@ -5,8 +5,10 @@ import li.lika.common.models.DeeplinkCreator
 import li.lika.common.models.LinkBatchRequest
 import li.lika.common.models.LinkBatchResult
 import li.lika.common.models.MetadataKeyValues
+import li.lika.common.models.UnusedLinks
 import li.lika.common.models.dtos.*
 import li.lika.core.services.DeeplinkService
+import li.lika.core.services.EngagementService
 import li.lika.common.security.LikaPrincipal
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
@@ -17,7 +19,7 @@ import org.springframework.web.bind.annotation.*
  */
 @RequestMapping("/api/links", "/api/admin/links")
 @RestController
-class ApiLinksController(private val deeplinkService: DeeplinkService) {
+class ApiLinksController(private val deeplinkService: DeeplinkService, private val engagement: EngagementService) {
 
     @GetMapping("/sync")
     fun getAll(@RequestParam domainId: String, @AuthenticationPrincipal p: LikaPrincipal): List<Deeplink> {
@@ -42,6 +44,15 @@ class ApiLinksController(private val deeplinkService: DeeplinkService) {
     @GetMapping("/metadata")
     fun metadata(@RequestParam(required = false) domainId: String?, @AuthenticationPrincipal p: LikaPrincipal): List<MetadataKeyValues> {
         return deeplinkService.metadataValues(p, domainId)
+    }
+
+    /**
+     * Links created over a year ago and not visited for a year, oldest first, to clean up: at most 500, with their total.
+     * Without domainId, across every domain the caller can access.
+     */
+    @GetMapping("/unused")
+    fun unused(@RequestParam(required = false) domainId: String?, @AuthenticationPrincipal p: LikaPrincipal): UnusedLinks {
+        return engagement.unusedLinks(p, domainId)
     }
 
     /** One operation on several links, all or none */

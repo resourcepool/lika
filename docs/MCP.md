@@ -17,7 +17,7 @@ Send `Authorization: Bearer <credential>` with every request. API keys can also 
 | **Application API key** (`lika_…`) | **API Keys** (admins and domain managers) | its own roles: viewer or editor per domain, or admin | yes | yes |
 | User access token (JWT) | sign-in | the user's rights | yes | yes |
 
-Use a **user API key** to connect your own assistant. Each person has at most one: creating a new one revokes the previous one. You can regenerate or revoke it in your profile, and an admin can revoke it from **Users**. Deleting the user deletes their key.
+Use a **user API key** to connect your own assistant. Create one per application (Claude Desktop, Cursor…), named after it, up to 20: your profile lists them with when each was last used, and revoking one leaves the others connected. An admin can revoke them all from **Users**. Deleting the user deletes their keys.
 
 Use an **application API key** for an assistant or an automation that works on behalf of a team rather than a person.
 
@@ -176,7 +176,7 @@ User API keys work the same with every identity provider (`LIKA_AUTH_PROVIDER`):
 
 ## Security
 
-- A user API key holds your rights: store it like a password, in your client's secret storage where possible, never in a shared repository. Revoke it as soon as it leaks; a new one replaces it.
+- A user API key holds your rights: store it like a password, in your client's secret storage where possible, never in a shared repository. One key per application keeps a leak small: revoke that key as soon as it leaks, and create another.
 - Give assistants working for a team an application key limited to the domains and the role they need, with an expiry.
 - Destructive tools (`delete_*`, `disable_user`, `regenerate_api_key`) are annotated as such. Keep your client's confirmation prompts on for them.
 - Invitation and password reset links returned by the tools let anyone holding them sign in as that person: they should only be passed on privately.

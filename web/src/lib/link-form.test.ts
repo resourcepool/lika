@@ -38,6 +38,17 @@ describe("formToLinkInput", () => {
     expect(input).not.toHaveProperty("slug")
     expect(input.type).toBe("SIMPLE")
   })
+  it("turns an expiry delay into a date, counted from today", () => {
+    const form = { ...emptyLinkForm("d1"), targetUrl: "https://e.com", expires: true }
+    const today = new Date(2026, 10, 19)
+    expect(formToLinkInput({ ...form, expiryPreset: "7d" }, undefined, today).options.expiry).toEqual({ expiryDate: "2026-11-26" })
+    expect(formToLinkInput({ ...form, expiryPreset: "3m" }, undefined, today).options.expiry).toEqual({ expiryDate: "2027-02-19" })
+    expect(formToLinkInput({ ...form, expiryPreset: "custom", expiryDate: "2027-01-01" }, undefined, today).options.expiry).toEqual({ expiryDate: "2027-01-01" })
+    expect(formToLinkInput({ ...form, expires: false }, undefined, today).options.expiry).toBeUndefined()
+  })
+  it("edits an existing expiry as a custom date", () => {
+    expect(linkToForm(link, "d1")).toMatchObject({ expires: true, expiryPreset: "custom", expiryDate: "2026-12-31" })
+  })
   it("drops metadata rows without a key", () => {
     const input = formToLinkInput({ ...emptyLinkForm("d1"), targetUrl: "https://e.com", metadata: [{ key: " ", value: "x" }, { key: " k ", value: "v" }] })
     expect(input.metadata).toEqual({ k: "v" })
@@ -46,10 +57,13 @@ describe("formToLinkInput", () => {
 
 describe("linkFormSchema", () => {
   it("requires a password when setting one, and dates when enabled", () => {
-    const result = linkFormSchema.safeParse({ ...emptyLinkForm("d1"), targetUrl: "https://e.com", passwordMode: "set", scheduled: true, expires: true })
+    const result = linkFormSchema.safeParse({ ...emptyLinkForm("d1"), targetUrl: "https://e.com", passwordMode: "set", scheduled: true, expires: true, expiryPreset: "custom" })
     expect(result.success).toBe(false)
     const paths = result.error!.issues.map((i) => i.path.join("."))
     expect(paths).toEqual(expect.arrayContaining(["password", "activationInstant", "expiryDate"]))
+  })
+  it("needs no date for an expiry delay", () => {
+    expect(linkFormSchema.safeParse({ ...emptyLinkForm("d1"), targetUrl: "https://e.com", expires: true, expiryPreset: "30d" }).success).toBe(true)
   })
   it("rejects slugs with other characters", () => {
     expect(linkFormSchema.safeParse({ ...emptyLinkForm("d1"), targetUrl: "https://e.com", slug: "a/b" }).success).toBe(false)

@@ -41,5 +41,5 @@ interface UserTokenRepository : CrudRepository<UserTokenDb, String> {
 @Repository
 interface ApiKeyRepository : CrudRepository<ApiKeyDb, String> {
     fun findFirstBySecretHash(secretHash: String): ApiKeyDb?
-    fun findFirstByUserId(userId: String): ApiKeyDb?
+    fun findAllByUserId(userId: String): List<ApiKeyDb>
 }

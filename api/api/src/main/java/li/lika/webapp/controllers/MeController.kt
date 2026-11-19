@@ -43,12 +43,17 @@ class MeController(
         users.revokeSessions(p, p.id)
     }
 
+    /** The user API keys of the user, oldest first, each with when its application last used it */
+    @GetMapping("/api-keys")
+    fun apiKeys(@AuthenticationPrincipal p: LikaPrincipal): List<ApiKey> = keys.userKeys(p.id)
+
     /**
-     * Creates the user API key, replacing the previous one. It acts with the user's current rights,
+     * Creates a user API key for one application. It acts with the user's current rights,
      * on the MCP server only. The secret is only returned here.
      */
-    @PostMapping("/api-key")
-    fun createApiKey(@AuthenticationPrincipal p: LikaPrincipal): ApiKeySecret = keys.createUserKey(p as LikaPrincipal.UserPrincipal)
+    @PostMapping("/api-keys")
+    fun createApiKey(@AuthenticationPrincipal p: LikaPrincipal, @RequestBody req: UserKeyRequest): ApiKeySecret =
+        keys.createUserKey(p as LikaPrincipal.UserPrincipal, req.name)
 
     /**
      * Claude plugin bringing the skills of the MCP server, for the rights of the user now, and the server as connector.
@@ -61,9 +66,10 @@ class MeController(
             .contentType(MediaType.parseMediaType("application/zip"))
             .body(plugin.zip(p, mcpUrl))
 
-    @DeleteMapping("/api-key")
+    /** The application using it is disconnected immediately; the other keys keep working */
+    @DeleteMapping("/api-keys/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    fun deleteApiKey(@AuthenticationPrincipal p: LikaPrincipal) {
-        keys.deleteUserKey(p.id)
+    fun deleteApiKey(@AuthenticationPrincipal p: LikaPrincipal, @PathVariable id: String) {
+        keys.deleteUserKey(p.id, id)
     }
 }

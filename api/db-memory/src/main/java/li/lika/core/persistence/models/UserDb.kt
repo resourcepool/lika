@@ -106,7 +106,8 @@ fun UserToken.toDb(): UserTokenDb = UserTokenDb().also {
     name = "api_keys",
     indexes = [
         Index(name = "api_key_secret_hash", columnList = "secretHash", unique = true),
-        Index(name = "api_key_user", columnList = "userId", unique = true)
+        // Named api_key_user and unique before 0.17.0: see LegacySchema
+        Index(name = "api_key_owner", columnList = "userId", unique = false)
     ]
 )
 class ApiKeyDb() {

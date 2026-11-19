@@ -106,9 +106,12 @@ data class UserLink(val user: User, val link: String, val emailSent: Boolean, va
 
 /**
  * The signed-in user, with what the UI needs to shape itself.
- * @param apiKey their user API key for the MCP server, if they created one
+ * @param apiKeys their user API keys for the MCP server, one per application they connected
  */
-data class Me(val user: User, val claims: LikaClaims, val provider: AuthProviderType, val apiKey: ApiKey? = null)
+data class Me(val user: User, val claims: LikaClaims, val provider: AuthProviderType, val apiKeys: List<ApiKey> = emptyList())
+
+/** @param name the application which will use the key, e.g. "Claude Desktop" */
+data class UserKeyRequest(var name: String = "")
 
 data class ApiKeyRequest(
     var name: String = "",

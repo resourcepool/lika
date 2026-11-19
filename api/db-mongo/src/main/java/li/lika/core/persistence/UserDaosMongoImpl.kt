@@ -61,7 +61,7 @@ class ApiKeyDaoMongoImpl(private val template: MongoTemplate) : ApiKeyDao {
     override fun findAll(): List<ApiKey> = template.findAll(ApiKeyDb::class.java).map { it.toDomain() }
     override fun findById(id: String): ApiKey? = template.findById(id, ApiKeyDb::class.java)?.toDomain()
     override fun findBySecretHash(secretHash: String): ApiKey? = template.findOne(query(where("secretHash").`is`(secretHash)), ApiKeyDb::class.java)?.toDomain()
-    override fun findByUserId(userId: String): ApiKey? = template.findOne(query(where("userId").`is`(userId)), ApiKeyDb::class.java)?.toDomain()
+    override fun findAllByUserId(userId: String): List<ApiKey> = template.find(query(where("userId").`is`(userId)), ApiKeyDb::class.java).map { it.toDomain() }
     override fun save(k: ApiKey): ApiKey = template.save(ApiKeyDb.from(k)).toDomain()
     override fun deleteOne(id: String) {
         template.remove(query(where("_id").`is`(id)), ApiKeyDb::class.java)

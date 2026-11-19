@@ -65,14 +65,15 @@ export type InvitationInfo = { email: string; name: string; accountExists: boole
 
 export type AuthTokens = { accessToken: string; expiresIn: number; refreshToken: string; user: User }
 
-/** @param apiKey the user API key of the user, for the MCP server */
-export type Me = { user: User; claims: LikaClaims; provider: AuthProvider; apiKey: ApiKey | null }
+/** @param apiKeys the user API keys of the user, for the MCP server: one per application they connected */
+export type Me = { user: User; claims: LikaClaims; provider: AuthProvider; apiKeys: ApiKey[] }
 
 /** Invitation or password reset link, to pass on by hand when no email was sent */
 export type UserLink = { user: User; link: string; emailSent: boolean; expiresAt: string }
 
 export type ApiKey = {
   id: string
+  /** The application using the key */
   name: string
   admin: boolean
   domains: Record<string, DomainRole>
@@ -141,6 +142,38 @@ export type LinkBatchRequest = {
 }
 
 export type LinkBatchResult = { count: number; links: Link[] }
+
+export type EngagementRange = "24h" | "7d" | "30d" | "90d" | "12m"
+export type EngagementResolution = "hour" | "day" | "week"
+
+/** Visits during the hour, day or week (UTC) starting at `start` */
+export type EngagementPoint = { start: string; count: number }
+
+/** Visits of a domain, of every domain, or of one link (`link` set) */
+export type EngagementReport = {
+  range: EngagementRange
+  resolution: EngagementResolution
+  from: string
+  to: string
+  total: number
+  /** One point per period, without gap */
+  series: EngagementPoint[]
+  domains: { domainId: string; host: string; count: number }[]
+  /** Most visited links */
+  links: { link: Link; count: number }[]
+  link: Link | null
+  /** When Lika started counting visits */
+  trackedSince: string | null
+}
+
+/** Links created over a year ago, without visit since `since` */
+export type UnusedLinks = {
+  since: string
+  trackedSince: string
+  total: number
+  /** The oldest ones, at most 500 */
+  links: Link[]
+}
 
 export type Page<T> = {
   totalItemCount: number

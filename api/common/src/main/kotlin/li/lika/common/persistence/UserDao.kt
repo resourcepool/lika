@@ -30,7 +30,7 @@ interface ApiKeyDao {
     fun findAll(): List<ApiKey>
     fun findById(id: String): ApiKey?
     fun findBySecretHash(secretHash: String): ApiKey?
-    fun findByUserId(userId: String): ApiKey?
+    fun findAllByUserId(userId: String): List<ApiKey>
     fun save(k: ApiKey): ApiKey
     fun deleteOne(id: String)
     fun deleteAll()

@@ -59,7 +59,7 @@ data class ApiKeyDb(
     val createdAt: Instant = Instant.now(),
     val expiresAt: Instant? = null,
     val lastUsedAt: Instant? = null,
-    @Indexed(unique = true, sparse = true) val userId: String? = null
+    @Indexed(sparse = true) val userId: String? = null
 ) {
     fun toDomain() = ApiKey(id, name, admin, domains.mapValues { DomainRole.parse(it.value) }, secretHash, prefix, createdBy, createdAt, expiresAt, lastUsedAt, userId)
 

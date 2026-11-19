@@ -292,7 +292,7 @@ class SessionService(
 
     fun me(caller: LikaPrincipal): Me {
         val user = users.findById(caller.id)
-        return Me(user, user.claims(), provider.type, keys.findUserKey(user.id))
+        return Me(user, user.claims(), provider.type, keys.userKeys(user.id))
     }
 
     fun updateProfile(caller: LikaPrincipal, req: ProfileUpdate): Me {

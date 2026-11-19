@@ -14,6 +14,7 @@ Lika is an open-source permalink service: short links on your own domains, manag
   - *landing page*: the link opens the landing page of its domain instead of redirecting directly;
   - free-form *metadata*.
 - **Search and bulk changes**: find links by text and by metadata (`campaign = summer`), select many, then set or remove metadata, set the expiry, or delete them at once.
+- **Engagement**: visits per domain and per link, live over the last 24 hours and up to a year back, and a cleanup of the links nobody visited for a year.
 - **Users and rights**: invite-only users, admins, and a role per domain (`viewer`, `editor`, `manager`). Domain managers invite people to their domains.
 - **Sign-in your way**: Lika's own accounts, a Keycloak realm (any LDAP or identity provider behind it), or Firebase Authentication with Google sign-in.
 - **API keys** for applications, scoped per domain or admin, and personal keys for AI assistants.
@@ -121,7 +122,7 @@ Two applications built from this repository: see [docs/DOKPLOY.md](docs/DOKPLOY.
 
 Rights travel in the `lika` claim of the user's token, `{v, admin, domains}`, renamed with `LIKA_CLAIM_NAME` for Keycloak and Firebase. Lika's database stays the reference: the claim's `v` only tells outdated tokens apart. Details: [Keycloak](docs/auth/KEYCLOAK.md#claims), [Firebase](docs/auth/FIREBASE.md#claims). When an admin changes them, the version `v` changes and older tokens are refused until the web interface renews them, which it does by itself.
 
-API keys are for applications: `viewer` or `editor` per domain, or admin. A user API key (`lika_u_…`) acts with the live rights of its user, on `/mcp` only.
+API keys are for applications: `viewer` or `editor` per domain, or admin. A user API key (`lika_u_…`) acts with the live rights of its user, on `/mcp` only; each person creates one per application they connect.
 
 ## Using the API
 

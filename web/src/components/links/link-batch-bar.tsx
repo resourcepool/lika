@@ -5,13 +5,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { CalendarClock, Loader2, Tag, Trash2, X, XCircle } from "lucide-react"
 import { toast } from "sonner"
 import { api } from "@/lib/client"
+import { DEFAULT_EXPIRY_PRESET, expiryDateOf, type ExpiryChoice } from "@/lib/expiry"
 import { MAX_BATCH, metadataKeysOf, rowsToMetadata } from "@/lib/link-batch"
 import type { Link, LinkBatchRequest, LinkBatchResult } from "@/lib/types"
 import { ConfirmDialog } from "@/components/app/confirm-dialog"
+import { ExpiryPicker } from "@/components/links/expiry-picker"
 import { MetadataEditor, type MetadataRow } from "@/components/links/metadata-editor"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
@@ -34,7 +35,8 @@ export function LinkBatchBar({ selected, onClear, onUpdated }: Props) {
   const [open, setOpen] = useState<Open>(null)
   const [rows, setRows] = useState<MetadataRow[]>([{ key: "", value: "" }])
   const [removedKeys, setRemovedKeys] = useState<string[]>([])
-  const [expiryDate, setExpiryDate] = useState("")
+  const [expiry, setExpiry] = useState<ExpiryChoice>({ preset: DEFAULT_EXPIRY_PRESET, date: "" })
+  const expiryDate = expiryDateOf(expiry)
   const tooMany = selected.length > MAX_BATCH
   const keys = metadataKeysOf(selected)
 
@@ -59,7 +61,7 @@ export function LinkBatchBar({ selected, onClear, onUpdated }: Props) {
   function show(which: Open) {
     setRows([{ key: "", value: "" }])
     setRemovedKeys([])
-    setExpiryDate("")
+    setExpiry({ preset: DEFAULT_EXPIRY_PRESET, date: "" })
     setOpen(which)
   }
 
@@ -142,11 +144,11 @@ export function LinkBatchBar({ selected, onClear, onUpdated }: Props) {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Expiry</DialogTitle>
-            <DialogDescription>The {plural(selected.length)} stop working after this day, and are deleted the next night.</DialogDescription>
+            <DialogDescription>The {plural(selected.length)} stop working after their last day, and are deleted the next night.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="batch-expiry">Last day</Label>
-            <Input id="batch-expiry" type="date" className="w-48 font-mono text-sm" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)} />
+            <Label htmlFor="batch-expiry">Expires</Label>
+            <ExpiryPicker id="batch-expiry" value={expiry} onChange={setExpiry} />
           </div>
           <DialogFooter className="sm:justify-between">
             <Button variant="ghost" disabled={run.isPending} onClick={() => run.mutate({ action: "set_expiry", expiryDate: null })}>

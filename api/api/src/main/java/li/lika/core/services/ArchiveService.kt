@@ -139,13 +139,15 @@ class ArchiveService(
             creators[email] = (user ?: existing)!!.id
         }
         archive.apiKeys.filter { it.user == null || creators.containsKey(it.user!!.trim().lowercase()) }.forEach { item ->
-            val existing = keyDao.findAll().firstOrNull { it.name == item.name }
+            // Application keys are matched by name; user keys by owner and name, as two users may name theirs alike
+            val owner = item.user?.let { creators[it.trim().lowercase()] }
+            val existing = keyDao.findAll().firstOrNull { it.name == item.name && it.userId == owner }
             val key = when {
                 existing == null -> {
                     report.apiKeys.created++
                     ApiKey(UUID.randomUUID().toString(), item.name, item.admin, roles(item.domains), item.secretHash, item.prefix,
                         createdAt = item.createdAt?.let { Instant.parse(it) } ?: Instant.now(), expiresAt = item.expiresAt?.let { Instant.parse(it) },
-                        userId = item.user?.let { creators[it.trim().lowercase()] })
+                        userId = owner)
                 }
                 overwrite -> {
                     report.apiKeys.updated++
@@ -160,7 +162,8 @@ class ArchiveService(
             // A secret already used by another key (e.g. the configured root key) is not imported twice
             val clash = key?.let { keyDao.findBySecretHash(it.secretHash) }?.takeIf { it.id != key.id }
             if (key != null && clash == null && !dryRun) keyDao.save(key)
-            creators[item.name] = (clash ?: key ?: existing)!!.id
+            // Links are never created by a user key: its user is their creator
+            if (owner == null) creators[item.name] = (clash ?: key ?: existing)!!.id
         }
 
         // 3. Links

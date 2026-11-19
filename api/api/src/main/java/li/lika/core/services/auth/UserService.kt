@@ -239,7 +239,7 @@ class UserService(
         }
         assertNotLastAdmin(user)
         tokenDao.deleteAllForUser(user.id)
-        keys.deleteUserKey(user.id)
+        keys.deleteUserKeys(user.id)
         userDao.deleteOne(user.id)
         evict(user.id)
         user.externalId?.let { id ->
@@ -266,11 +266,11 @@ class UserService(
         return UserLink(user, link, sent, token.expiresAt)
     }
 
-    /** Admin only: the user can create a new one */
-    fun revokeUserKey(caller: LikaPrincipal, id: String) {
+    /** Admin only: revokes every user API key of the user, who can create new ones */
+    fun revokeUserKeys(caller: LikaPrincipal, id: String) {
         authorization.assertAdmin(caller)
         findById(id)
-        if (!keys.deleteUserKey(id)) throw ApiKeyNotFoundException()
+        if (keys.deleteUserKeys(id) == 0) throw ApiKeyNotFoundException()
     }
 
     /** Signs the user out everywhere: current tokens are refused, sessions cannot be renewed */

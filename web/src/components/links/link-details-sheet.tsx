@@ -1,7 +1,8 @@
 "use client"
 
 import { format } from "date-fns"
-import { ExternalLink, Pencil } from "lucide-react"
+import NextLink from "next/link"
+import { ChartColumn, ExternalLink, Pencil } from "lucide-react"
 import type { Link } from "@/lib/types"
 import { useApiKeys, useUsers } from "@/hooks/use-lika"
 import { useSession } from "@/components/app/session-context"
@@ -80,6 +81,12 @@ export function LinkDetailsSheet({ link, onOpenChange, onEdit }: { link?: Link; 
               )}
             </div>
             <SheetFooter>
+              <Button variant="outline" asChild>
+                <NextLink href={`/engagement?link=${link.id}`}>
+                  <ChartColumn />
+                  Engagement
+                </NextLink>
+              </Button>
               <Button onClick={() => onEdit(link)}>
                 <Pencil />
                 Edit

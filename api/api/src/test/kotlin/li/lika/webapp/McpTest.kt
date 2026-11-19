@@ -26,7 +26,8 @@ class McpTest : ApiTestSupport() {
         rpc(token, "tools/call", mapOf("name" to name, "arguments" to arguments))!!["result"]
 
     /** A user's own user API key */
-    private fun userKey(session: JsonNode): String = call(session.access, post("/api/me/api-key"))!!.secret
+    private fun userKey(session: JsonNode, name: String = unique("assistant")): String =
+        call(session.access, post("/api/me/api-keys").json(mapOf("name" to name)))!!.secret
 
     @Test
     fun `MCP clients must authenticate`() {
@@ -182,35 +183,64 @@ class McpTest : ApiTestSupport() {
     }
 
     @Test
-    fun `a user API key is unique, follows its user, and only works on MCP`() {
+    fun `user API keys follow their user, and only work on MCP`() {
         val domain = createDomain()
         val session = createUser(mapOf(domain.id to "viewer"))
-        val first = userKey(session)
-        assertTrue(first.startsWith("lika_u_"))
-        assertEquals(first.take(11), call(session.access, get("/api/me"))!!["apiKey"]["prefix"].asText())
+        val key = userKey(session)
+        assertTrue(key.startsWith("lika_u_"))
+        assertEquals(key.take(11), call(session.access, get("/api/me"))!!["apiKeys"].single()["prefix"].asText())
 
-        call(first, get("/api/domains"), 403)
-        call(first, get("/api/me"), 403)
-        assertFalse("create_link" in tools(first))
+        call(key, get("/api/domains"), 403)
+        call(key, get("/api/me"), 403)
+        assertFalse("create_link" in tools(key))
 
         // Rights follow the user immediately
         call(adminSession().access, put("/api/users/${session.userId}/access").json(mapOf("domains" to mapOf(domain.id to "editor"))))
-        assertTrue("create_link" in tools(first))
-
-        // Unique: a new one replaces it (with a new session token: the rights changed)
-        val second = userKey(login(session.email))
-        rpc(first, "tools/list", expectedStatus = 401)
+        assertTrue("create_link" in tools(key))
         assertFalse(call(ADMIN_TOKEN, get("/api/keys"))!!.any { it["userId"]?.asText() == session.userId }, "not listed with application keys")
 
         call(adminSession().access, post("/api/users/${session.userId}/disable"))
-        rpc(second, "tools/list", expectedStatus = 401)
+        rpc(key, "tools/list", expectedStatus = 401)
         call(adminSession().access, post("/api/users/${session.userId}/enable"))
-        tools(second)
+        tools(key)
 
-        call(adminSession().access, delete("/api/users/${session.userId}/api-key"), 204)
-        rpc(second, "tools/list", expectedStatus = 401)
+        call(adminSession().access, delete("/api/users/${session.userId}/api-keys"), 204)
+        rpc(key, "tools/list", expectedStatus = 401)
         // Its rights changed since: its first token is stale
-        assertTrue(call(login(session.email).access, get("/api/me"))!!["apiKey"].isNull)
+        assertTrue(call(login(session.email).access, get("/api/me"))!!["apiKeys"].isEmpty)
+        call(adminSession().access, delete("/api/users/${session.userId}/api-keys"), 404)
+    }
+
+    @Test
+    fun `a user has one key per application, each with its own last use`() {
+        val domain = createDomain()
+        val session = createUser(mapOf(domain.id to "editor"))
+        val other = createUser(mapOf(domain.id to "viewer"))
+        val desktop = userKey(session, "Claude Desktop")
+        val cursor = userKey(session, "Cursor")
+
+        // Named after their application, which must be told and differ
+        call(session.access, post("/api/me/api-keys").json(mapOf("name" to "claude desktop")), 400)
+        call(session.access, post("/api/me/api-keys").json(mapOf("name" to " ")), 400)
+        // Another user may use the same name
+        userKey(other, "Cursor")
+
+        tools(cursor)
+        val keys = call(session.access, get("/api/me/api-keys"))!!
+        assertEquals(listOf("Claude Desktop", "Cursor"), keys.map { it["name"].asText() })
+        assertTrue(keys[0]["lastUsedAt"].isNull, "Claude Desktop was never used")
+        assertFalse(keys[1]["lastUsedAt"].isNull)
+        assertFalse(keys.toString().contains(cursor), "secrets are shown once")
+
+        // Revoking one leaves the other connected, and is for its owner only
+        call(other.access, delete("/api/me/api-keys/${keys[1].id}"), 404)
+        call(session.access, delete("/api/me/api-keys/${keys[1].id}"), 204)
+        rpc(cursor, "tools/list", expectedStatus = 401)
+        tools(desktop)
+        assertEquals(listOf("Claude Desktop"), call(session.access, get("/api/me"))!!["apiKeys"].map { it["name"].asText() })
+
+        // The name is free again
+        userKey(session, "Cursor")
     }
 
     @Test

@@ -2,9 +2,10 @@
 
 import { Globe } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ALL_DOMAINS } from "@/hooks/use-domain-selection"
 import type { Domain } from "@/lib/types"
 
-export const ALL_DOMAINS = "all"
+export { ALL_DOMAINS }
 
 export function DomainSwitcher({ domains, value, onChange }: { domains: Domain[]; value: string; onChange: (value: string) => void }) {
   return (
