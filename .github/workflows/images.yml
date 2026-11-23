@@ -1,0 +1,263 @@
+# GitHub Actions of Lika: tests, then Docker images pushed to the GitHub container registry,
+# public at ghcr.io/resourcepool/lika. Same images and tags as .gitlab-ci.yml.
+#
+#   test     API tests (+ jar for the end-to-end tests), web unit and end-to-end tests
+#   package  images built from api/Dockerfile and web/Dockerfile, natively on amd64 and arm64 runners,
+#            pushed as <tag>-amd64 and <tag>-arm64
+#   publish  multi-arch images joining both:
+#              api:<version>-<db>   db = sqlite, postgres, mongo, memory; also latest-<db>
+#              api:<version>        the SQLite image; also latest
+#              www:<version>        also latest
+#            On release tags vX.Y.Z (<version> = vX.Y.Z), after the tests pass.
+#            On the default branch, by hand from the Actions tab (<version> = main, no latest).
+#
+# The arm64 runner defaults to GitHub's ubuntu-24.04-arm. Set the repository variable ARM64_RUNNER
+# to use another label (e.g. a larger or self-hosted runner).
+
+name: Images
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  REGISTRY: ghcr.io
+  # The registry requires lowercase names
+  IMAGE_BASE: ghcr.io/resourcepool/lika
+
+jobs:
+  # ===============================
+  # TEST
+  # ===============================
+
+  test-api:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
+      - uses: gradle/actions/setup-gradle@v4
+      # The jar (in-memory database) also serves the web end-to-end tests
+      - name: Test and build the jar
+        working-directory: api
+        run: |
+          chmod +x gradlew
+          ./gradlew test :api:bootJar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: api-jar
+          path: api/api/build/libs/api.jar
+          retention-days: 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-test-results
+          path: api/api/build/test-results/test/
+          retention-days: 7
+
+  # Unit tests, then end-to-end tests of the web app against the real API
+  test-web:
+    runs-on: ubuntu-24.04
+    needs: test-api
+    container: mcr.microsoft.com/playwright:v1.63.0-noble
+    env:
+      LIKA_API_URL: http://localhost:8080
+      LIKA_SESSION_SECRET: ci-only-session-secret-not-used-anywhere-else
+      # Read by the API: lets the tests create the first admin, and loads the sample data and root key the tests use
+      LIKA_SETUP_TOKEN: e2e-setup-token
+      SPRING_PROFILES_ACTIVE: dev
+      # Playwright's image runs as root, which Firefox refuses without this
+      HOME: /root
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: api-jar
+          path: api/api/build/libs
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ hashFiles('web/package-lock.json') }}
+      - name: Install a JRE
+        run: apt-get update -qq && apt-get install -y -qq openjdk-21-jre-headless curl > /dev/null
+      - name: Start the API
+        run: java -jar api/api/build/libs/api.jar > api.log 2>&1 &
+      - name: Lint, typecheck, unit tests and build
+        working-directory: web
+        run: |
+          npm ci
+          npm run lint
+          npm run typecheck
+          npm test
+          npm run build
+          cp -r .next/static .next/standalone/.next/
+      - name: End-to-end tests
+        working-directory: web
+        run: |
+          PORT=3000 HOSTNAME=127.0.0.1 node .next/standalone/server.js > ../web.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf localhost:8080/actuator/health > /dev/null && curl -sf localhost:3000/health > /dev/null && break; sleep 2; done
+          npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-test-results
+          path: |
+            api.log
+            web.log
+            web/test-results/
+          retention-days: 7
+
+  # ===============================
+  # VERSION: which tags, if any, this run publishes
+  # ===============================
+
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      latest: ${{ steps.v.outputs.latest }}
+      publish: ${{ steps.v.outputs.publish }}
+    steps:
+      - id: v
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ "$REF_TYPE" = tag ] && echo "$REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "version=$REF_NAME" >> "$GITHUB_OUTPUT"
+            echo "latest=true" >> "$GITHUB_OUTPUT"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT" = workflow_dispatch ] && [ "$REF_NAME" = "$DEFAULT_BRANCH" ]; then
+            echo "version=main" >> "$GITHUB_OUTPUT"
+            echo "latest=false" >> "$GITHUB_OUTPUT"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ===============================
+  # PACKAGE: one image per variant and architecture
+  # ===============================
+
+  package:
+    needs: [test-api, test-web, version]
+    if: needs.version.outputs.publish == 'true'
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [api-sqlite, api-postgres, api-mongo, api-memory, www]
+        arch: [amd64, arm64]
+    runs-on: ${{ matrix.arch == 'arm64' && (vars.ARM64_RUNNER || 'ubuntu-24.04-arm') || 'ubuntu-24.04' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Image, tag and build arguments
+        id: img
+        env:
+          VARIANT: ${{ matrix.variant }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          case "$VARIANT" in
+            api-*)
+              DB="${VARIANT#api-}"
+              echo "image=$IMAGE_BASE/api" >> "$GITHUB_OUTPUT"
+              echo "tag=$VERSION-$DB" >> "$GITHUB_OUTPUT"
+              echo "context=api" >> "$GITHUB_OUTPUT"
+              echo "build-args=DB=$DB" >> "$GITHUB_OUTPUT"
+              ;;
+            www)
+              echo "image=$IMAGE_BASE/www" >> "$GITHUB_OUTPUT"
+              echo "tag=$VERSION" >> "$GITHUB_OUTPUT"
+              echo "context=web" >> "$GITHUB_OUTPUT"
+              echo "build-args=" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ steps.img.outputs.context }}
+          build-args: ${{ steps.img.outputs.build-args }}
+          platforms: linux/${{ matrix.arch }}
+          pull: true
+          push: true
+          provenance: false
+          tags: ${{ steps.img.outputs.image }}:${{ steps.img.outputs.tag }}-${{ matrix.arch }}
+          labels: |
+            org.opencontainers.image.title=lika-${{ matrix.variant }}
+            org.opencontainers.image.version=${{ needs.version.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.licenses=Apache-2.0
+          cache-from: type=gha,scope=${{ matrix.variant }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.variant }}-${{ matrix.arch }}
+
+  # ===============================
+  # PUBLISH: multi-arch images, under the tags people pull
+  # ===============================
+
+  publish:
+    needs: [package, version]
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [api-sqlite, api-postgres, api-mongo, api-memory, www]
+    steps:
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Join amd64 and arm64
+        env:
+          VARIANT: ${{ matrix.variant }}
+          VERSION: ${{ needs.version.outputs.version }}
+          LATEST: ${{ needs.version.outputs.latest }}
+        run: |
+          set -e
+          case "$VARIANT" in
+            api-*)
+              DB="${VARIANT#api-}"
+              IMAGE="$IMAGE_BASE/api"
+              TAG="$VERSION-$DB"
+              EXTRA_TAGS=""
+              if [ "$LATEST" = true ]; then EXTRA_TAGS="latest-$DB"; fi
+              # The SQLite image is the default one: also tagged without suffix
+              if [ "$DB" = sqlite ]; then EXTRA_TAGS="$EXTRA_TAGS $VERSION"; fi
+              if [ "$DB" = sqlite ] && [ "$LATEST" = true ]; then EXTRA_TAGS="$EXTRA_TAGS latest"; fi
+              ;;
+            www)
+              IMAGE="$IMAGE_BASE/www"
+              TAG="$VERSION"
+              EXTRA_TAGS=""
+              if [ "$LATEST" = true ]; then EXTRA_TAGS="latest"; fi
+              ;;
+          esac
+          targets="-t $IMAGE:$TAG"
+          for extra in $EXTRA_TAGS; do targets="$targets -t $IMAGE:$extra"; done
+          docker buildx imagetools create $targets "$IMAGE:$TAG-amd64" "$IMAGE:$TAG-arm64"
+          docker buildx imagetools inspect "$IMAGE:$TAG"

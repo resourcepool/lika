@@ -79,7 +79,17 @@ The web interface listens on port 3000, the API (short links) on 8080, with SQLi
 
 ### Prebuilt images
 
-Each release `vX.Y.Z` publishes images to the GitLab container registry of the project, `registry.gitlab.com/resourcepool/lika`:
+Each release `vX.Y.Z` publishes images to two registries, with the same tags:
+
+- the public GitHub container registry, `ghcr.io/resourcepool/lika` (built by `.github/workflows/images.yml`), no login needed to pull;
+- the GitLab container registry of the project, `registry.gitlab.com/resourcepool/lika` (built by `.gitlab-ci.yml`).
+
+```bash
+docker pull ghcr.io/resourcepool/lika/api:latest   # SQLite
+docker pull ghcr.io/resourcepool/lika/www:latest
+```
+
+Tags of both registries:
 
 | Image | Tags |
 |---|---|
